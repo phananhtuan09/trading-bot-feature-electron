@@ -1,0 +1,103 @@
+{
+  "name": "trading-bot-electron",
+  "version": "1.0.0",
+  "description": "Crypto Trading Bot Desktop App",
+  "main": "main/main.js",
+  "homepage": "./",
+  "author": {
+    "name": "Trading Bot Team",
+    "email": "team@tradingbot.com"
+  },
+  "license": "MIT",
+  "scripts": {
+    "start": "electron .",
+    "dev": "DISPLAY=:0 electron . --dev --no-sandbox --disable-gpu-sandbox --disable-software-rasterizer --enable-logging",
+    "dev:ubuntu": "DISPLAY=:0 electron . --dev --no-sandbox --disable-gpu-sandbox --disable-software-rasterizer --enable-logging --disable-web-security --disable-features=VizDisplayCompositor",
+    "dev:win": "electron . --dev --enable-logging",
+    "dev:mac": "electron . --dev --enable-logging",
+    "setup": "chmod +x setup.sh && ./setup.sh",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux",
+    "build:all": "electron-builder --win --linux",
+    "dist": "electron-builder --publish=never",
+    "publish": "electron-builder --publish=always",
+    "postinstall": "electron-builder install-app-deps"
+  },
+  "dependencies": {
+    "electron-updater": "^6.1.7",
+    "electron-store": "^8.1.0",
+    "axios": "^1.8.4",
+    "binance-api-node": "^0.12.9",
+    "discord.js": "^14.19.3",
+    "node-telegram-bot-api": "^0.66.0",
+    "technicalindicators": "^3.1.0",
+    "winston": "^3.17.0",
+    "winston-daily-rotate-file": "^5.0.0",
+    "dotenv": "^16.4.7",
+    "node-schedule": "^2.1.1",
+    "p-limit": "^2.3.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.4"
+  },
+  "build": {
+    "appId": "com.tradingbot.app",
+    "productName": "Trading Bot",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "main/**/*",
+      "renderer/**/*",
+      "node_modules/**/*",
+      "!node_modules/**/{test,spec}/**",
+      "!**/*.{iml,o,hprof}",
+      "!**/._*",
+      "!**/Thumbs.db"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64", "ia32"]
+        },
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icons/icon.ico",
+      "publisherName": "Trading Bot",
+      "verifyUpdateCodeSignature": false
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": ["x64"]
+        },
+        {
+          "target": "deb",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icons/icon.png",
+      "category": "Office"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Trading Bot"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "your-username",
+      "repo": "trading-bot-electron"
+    }
+  }
+}
