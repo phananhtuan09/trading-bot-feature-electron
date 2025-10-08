@@ -3,17 +3,20 @@
 ## 🚀 Cài đặt nhanh
 
 ### 1. Clone repository
+
 ```bash
 git clone <your-github-repo-url>
 cd trading-bot-electron
 ```
 
 ### 2. Cài đặt dependencies
+
 ```bash
 npm install
 ```
 
 ### 3. Cấu hình môi trường
+
 ```bash
 # Copy file cấu hình mẫu
 cp .env.example .env
@@ -25,16 +28,19 @@ nano .env
 ### 4. Chạy ứng dụng
 
 #### Trên Ubuntu/Linux:
+
 ```bash
 npm run dev
 ```
 
 #### Trên Windows:
+
 ```bash
 npm run dev:win
 ```
 
 #### Trên macOS:
+
 ```bash
 npm run dev:mac
 ```
@@ -42,6 +48,7 @@ npm run dev:mac
 ## 🔧 Cấu hình chi tiết
 
 ### File .env cần thiết:
+
 ```env
 # Binance API (Testnet)
 BINANCE_TEST_API_KEY=your_test_api_key
@@ -63,6 +70,7 @@ DISCORD_IS_ENABLED=false
 ```
 
 ### Cấu hình Binance Testnet:
+
 1. Truy cập: https://testnet.binance.vision/
 2. Đăng ký tài khoản testnet
 3. Tạo API Key và Secret
@@ -71,12 +79,14 @@ DISCORD_IS_ENABLED=false
 ## 🐛 Troubleshooting
 
 ### Lỗi sandbox trên Linux:
+
 ```bash
 # Chạy với flag no-sandbox
 npm run dev:ubuntu
 ```
 
 ### Lỗi không hiện cửa sổ:
+
 ```bash
 # Kiểm tra DISPLAY
 echo $DISPLAY
@@ -86,6 +96,7 @@ DISPLAY=:0 npm run dev
 ```
 
 ### Lỗi dependencies:
+
 ```bash
 # Xóa node_modules và cài lại
 rm -rf node_modules package-lock.json
@@ -95,16 +106,19 @@ npm install
 ## 📦 Build ứng dụng
 
 ### Build cho Linux:
+
 ```bash
 npm run build:linux
 ```
 
 ### Build cho Windows:
+
 ```bash
 npm run build:win
 ```
 
 ### Build cho tất cả platforms:
+
 ```bash
 npm run build:all
 ```
@@ -112,6 +126,7 @@ npm run build:all
 ## 🔒 Bảo mật
 
 ⚠️ **QUAN TRỌNG:**
+
 - Không commit file `.env` lên GitHub
 - Sử dụng testnet trước khi dùng live trading
 - Bảo vệ API keys của bạn
@@ -120,6 +135,7 @@ npm run build:all
 ## 📞 Hỗ trợ
 
 Nếu gặp vấn đề, hãy:
+
 1. Kiểm tra file log trong thư mục `logs/`
 2. Chạy với `--enable-logging` để debug
 3. Tạo issue trên GitHub với thông tin chi tiết

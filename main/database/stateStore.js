@@ -1,4 +1,5 @@
-const Store = require('electron-store')
+const Store = require('electron-store');
+const BinanceService = require('../bot/binanceService');
 
 class StateManager {
   constructor() {
@@ -13,36 +14,42 @@ class StateManager {
           startTime: null,
           totalScans: 0,
           totalSignals: 0,
-          totalErrors: 0
+          totalErrors: 0,
         },
-        
+
         // Account state
         accountState: {
           balance: 0,
+          availableBalance: 0,
+          unrealizedPnl: 0,
+          marginBalance: 0,
           initialCapital: 0,
           totalProfit: 0,
           profitPercentage: 0,
-          lastUpdateTime: null
+          lastUpdateTime: null,
+          accountType: 'Unknown',
         },
-        
+
         // Orders state
         ordersState: {
           ordersPlacedToday: 0,
           totalOrders: 0,
           totalCapital: 0,
           maxOrdersPerDay: 10,
-          orderLimitPerScan: 3
+          orderLimitPerScan: 3,
+          quantity: 10,
+          leverage: 20,
         },
-        
+
         // Positions
         positions: [],
-        
+
         // Signals
         signals: [],
-        
+
         // Logs
         logs: [],
-        
+
         // Statistics
         statistics: {
           winRate: 0,
@@ -52,207 +59,428 @@ class StateManager {
           sharpeRatio: 0,
           totalTrades: 0,
           winningTrades: 0,
-          losingTrades: 0
-        }
-      }
-    })
+          losingTrades: 0,
+        },
+
+        // Connection status
+        connectionStatus: {
+          binance: { connected: false, lastCheck: null, error: null },
+          discord: { connected: false, lastCheck: null, error: null },
+          telegram: { connected: false, lastCheck: null, error: null },
+        },
+      },
+    });
+
+    this.binanceService = new BinanceService();
   }
 
   async initialize() {
     try {
-      console.log('StateManager initialized')
-      return true
+      console.log('StateManager initialized');
+      return true;
     } catch (error) {
-      console.error('Failed to initialize StateManager:', error)
-      throw error
+      console.error('Failed to initialize StateManager:', error);
+      throw error;
     }
   }
 
   // Bot state methods
   getBotState() {
-    return this.store.get('botState')
+    return this.store.get('botState');
   }
 
   updateBotState(updates) {
-    const currentState = this.getBotState()
-    this.store.set('botState', { ...currentState, ...updates })
+    const currentState = this.getBotState();
+    this.store.set('botState', { ...currentState, ...updates });
   }
 
   setBotRunning(isRunning) {
-    this.updateBotState({ 
+    this.updateBotState({
       isRunning,
-      startTime: isRunning ? Date.now() : null
-    })
+      startTime: isRunning ? Date.now() : null,
+    });
   }
 
   setBotOrderActive(isOrderActive) {
-    this.updateBotState({ isOrderActive })
+    this.updateBotState({ isOrderActive });
   }
 
   incrementScans() {
-    const currentState = this.getBotState()
-    this.updateBotState({ 
+    const currentState = this.getBotState();
+    this.updateBotState({
       totalScans: currentState.totalScans + 1,
-      lastScanTime: Date.now()
-    })
+      lastScanTime: Date.now(),
+    });
   }
 
   incrementSignals() {
-    const currentState = this.getBotState()
-    this.updateBotState({ 
-      totalSignals: currentState.totalSignals + 1
-    })
+    const currentState = this.getBotState();
+    this.updateBotState({
+      totalSignals: currentState.totalSignals + 1,
+    });
   }
 
   incrementErrors() {
-    const currentState = this.getBotState()
-    this.updateBotState({ 
-      totalErrors: currentState.totalErrors + 1
-    })
+    const currentState = this.getBotState();
+    this.updateBotState({
+      totalErrors: currentState.totalErrors + 1,
+    });
   }
 
   // Account state methods
   getAccountState() {
-    return this.store.get('accountState')
+    return this.store.get('accountState');
   }
 
   updateAccountState(updates) {
-    const currentState = this.getAccountState()
-    this.store.set('accountState', { ...currentState, ...updates })
+    const currentState = this.getAccountState();
+    this.store.set('accountState', { ...currentState, ...updates });
   }
 
   setBalance(balance) {
-    this.updateAccountState({ 
+    this.updateAccountState({
       balance,
-      lastUpdateTime: Date.now()
-    })
+      lastUpdateTime: Date.now(),
+    });
   }
 
   setInitialCapital(capital) {
-    this.updateAccountState({ 
+    this.updateAccountState({
       initialCapital: capital,
-      balance: capital
-    })
+      balance: capital,
+    });
   }
 
   updateProfit(profit, percentage) {
-    this.updateAccountState({ 
+    this.updateAccountState({
       totalProfit: profit,
-      profitPercentage: percentage
-    })
+      profitPercentage: percentage,
+    });
   }
 
   // Orders state methods
   getOrdersState() {
-    return this.store.get('ordersState')
+    return this.store.get('ordersState');
   }
 
   updateOrdersState(updates) {
-    const currentState = this.getOrdersState()
-    this.store.set('ordersState', { ...currentState, ...updates })
+    const currentState = this.getOrdersState();
+    this.store.set('ordersState', { ...currentState, ...updates });
   }
 
   incrementDailyOrders() {
-    const currentState = this.getOrdersState()
-    this.updateOrdersState({ 
+    const currentState = this.getOrdersState();
+    this.updateOrdersState({
       ordersPlacedToday: currentState.ordersPlacedToday + 1,
-      totalOrders: currentState.totalOrders + 1
-    })
+      totalOrders: currentState.totalOrders + 1,
+    });
   }
 
   resetDailyOrders() {
-    this.updateOrdersState({ ordersPlacedToday: 0 })
+    this.updateOrdersState({ ordersPlacedToday: 0 });
   }
 
   // Positions methods
   getPositions() {
-    return this.store.get('positions', [])
+    return this.store.get('positions', []);
   }
 
   addPosition(position) {
-    const positions = this.getPositions()
+    const positions = this.getPositions();
     positions.push({
       ...position,
       id: Date.now().toString(),
-      createdAt: new Date().toISOString()
-    })
-    this.store.set('positions', positions)
+      createdAt: new Date().toISOString(),
+    });
+    this.store.set('positions', positions);
   }
 
   updatePosition(positionId, updates) {
-    const positions = this.getPositions()
-    const index = positions.findIndex(p => p.id === positionId)
+    const positions = this.getPositions();
+    const index = positions.findIndex(p => p.id === positionId);
     if (index !== -1) {
-      positions[index] = { ...positions[index], ...updates }
-      this.store.set('positions', positions)
+      positions[index] = { ...positions[index], ...updates };
+      this.store.set('positions', positions);
     }
   }
 
   removePosition(positionId) {
-    const positions = this.getPositions()
-    const filteredPositions = positions.filter(p => p.id !== positionId)
-    this.store.set('positions', filteredPositions)
+    const positions = this.getPositions();
+    const filteredPositions = positions.filter(p => p.id !== positionId);
+    this.store.set('positions', filteredPositions);
   }
 
   getActivePositions() {
-    const positions = this.getPositions()
-    return positions.filter(p => p.status === 'active')
+    const positions = this.getPositions();
+    return positions.filter(p => p.status === 'active');
   }
 
   // Signals methods
   getSignals() {
-    return this.store.get('signals', [])
+    return this.store.get('signals', []);
   }
 
   addSignal(signal) {
-    const signals = this.getSignals()
+    const signals = this.getSignals();
     signals.unshift({
       ...signal,
       id: Date.now().toString(),
-      timestamp: new Date().toISOString()
-    })
-    
+      timestamp: new Date().toISOString(),
+    });
+
     // Keep only last 1000 signals
     if (signals.length > 1000) {
-      signals.splice(1000)
+      signals.splice(1000);
     }
-    
-    this.store.set('signals', signals)
+
+    this.store.set('signals', signals);
   }
 
   getTotalSignals() {
-    return this.getSignals().length
+    return this.getSignals().length;
   }
 
   // Logs methods
   getLogs() {
-    return this.store.get('logs', [])
+    return this.store.get('logs', []);
   }
 
   addLog(log) {
-    const logs = this.getLogs()
+    const logs = this.getLogs();
     logs.unshift({
       ...log,
       id: Date.now().toString(),
-      timestamp: new Date().toISOString()
-    })
-    
+      timestamp: new Date().toISOString(),
+    });
+
     // Keep only last 500 logs
     if (logs.length > 500) {
-      logs.splice(500)
+      logs.splice(500);
     }
-    
-    this.store.set('logs', logs)
+
+    this.store.set('logs', logs);
   }
 
   // Statistics methods
   getStatistics() {
-    return this.store.get('statistics')
+    return this.store.get('statistics');
   }
 
   updateStatistics(updates) {
-    const currentStats = this.getStatistics()
-    this.store.set('statistics', { ...currentStats, ...updates })
+    const currentStats = this.getStatistics();
+    this.store.set('statistics', { ...currentStats, ...updates });
+  }
+
+  // Real-time data methods
+  async updateAccountData() {
+    try {
+      const balanceData = await this.binanceService.getAccountBalance();
+      if (balanceData.success) {
+        this.updateAccountState({
+          balance: balanceData.balance,
+          availableBalance: balanceData.availableBalance,
+          unrealizedPnl: balanceData.unrealizedPnl,
+          marginBalance: balanceData.marginBalance,
+          accountType: balanceData.accountType,
+          lastUpdateTime: Date.now(),
+        });
+
+        // Calculate profit if we have initial capital
+        const accountState = this.getAccountState();
+        if (accountState.initialCapital > 0) {
+          const totalProfit = balanceData.balance - accountState.initialCapital;
+          const profitPercentage = (totalProfit / accountState.initialCapital) * 100;
+          this.updateAccountState({
+            totalProfit: totalProfit,
+            profitPercentage: profitPercentage,
+          });
+        }
+      }
+      return balanceData;
+    } catch (error) {
+      console.error('Failed to update account data:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async updatePositionsData() {
+    try {
+      const positions = await this.binanceService.getPositions();
+      this.store.set('positions', positions);
+      return positions;
+    } catch (error) {
+      console.error('Failed to update positions data:', error);
+      return [];
+    }
+  }
+
+  async closePositionReal(symbol, side) {
+    try {
+      const result = await this.binanceService.closePosition(symbol, side);
+      if (result.success) {
+        // Update positions after closing
+        await this.updatePositionsData();
+        // Update account data
+        await this.updateAccountData();
+
+        this.addLog({
+          level: 'info',
+          message: `Đã đóng vị thế ${symbol} thành công`,
+          type: 'position_closed',
+        });
+      }
+      return result;
+    } catch (error) {
+      console.error(`Failed to close position ${symbol}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async executeSignalReal(signalId) {
+    try {
+      const signals = this.getSignals();
+      const signal = signals.find(s => s.id === signalId);
+
+      if (!signal) {
+        throw new Error('Không tìm thấy tín hiệu');
+      }
+
+      // Get current order settings
+      const orderSettings = this.getOrdersState();
+
+      const orderData = {
+        symbol: signal.symbol,
+        side: signal.decision === 'Long' ? 'BUY' : 'SELL',
+        type: 'MARKET',
+        quantity: orderSettings.quantity,
+      };
+
+      const result = await this.binanceService.placeOrder(orderData);
+
+      if (result.success) {
+        // Update orders count
+        this.incrementDailyOrders();
+
+        // Update positions
+        await this.updatePositionsData();
+
+        // Update account data
+        await this.updateAccountData();
+
+        this.addLog({
+          level: 'info',
+          message: `Đã thực thi tín hiệu ${signal.symbol}: ${signal.decision}`,
+          type: 'signal_executed',
+        });
+      }
+
+      return result;
+    } catch (error) {
+      console.error(`Failed to execute signal ${signalId}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Connection status methods
+  async checkBinanceConnection() {
+    try {
+      const result = await this.binanceService.testConnection();
+      this.updateConnectionStatus('binance', {
+        connected: result.success,
+        lastCheck: Date.now(),
+        error: result.success ? null : result.error,
+      });
+      return result;
+    } catch (error) {
+      this.updateConnectionStatus('binance', {
+        connected: false,
+        lastCheck: Date.now(),
+        error: error.message,
+      });
+      return { success: false, error: error.message };
+    }
+  }
+
+  updateConnectionStatus(service, status) {
+    const currentStatus = this.store.get('connectionStatus');
+    currentStatus[service] = { ...currentStatus[service], ...status };
+    this.store.set('connectionStatus', currentStatus);
+  }
+
+  getConnectionStatus() {
+    return this.store.get('connectionStatus');
+  }
+
+  // Enhanced statistics
+  async calculateStatistics() {
+    try {
+      const positions = this.getPositions();
+      const closedPositions = positions.filter(p => p.status === 'closed');
+
+      if (closedPositions.length === 0) {
+        return this.getStatistics();
+      }
+
+      const winningTrades = closedPositions.filter(p => p.unrealizedPnl > 0);
+      const losingTrades = closedPositions.filter(p => p.unrealizedPnl < 0);
+
+      const winRate = (winningTrades.length / closedPositions.length) * 100;
+      const averageWin =
+        winningTrades.length > 0
+          ? winningTrades.reduce((sum, p) => sum + p.unrealizedPnl, 0) / winningTrades.length
+          : 0;
+      const averageLoss =
+        losingTrades.length > 0
+          ? losingTrades.reduce((sum, p) => sum + p.unrealizedPnl, 0) / losingTrades.length
+          : 0;
+
+      const statistics = {
+        winRate: winRate,
+        averageWin: averageWin,
+        averageLoss: averageLoss,
+        totalTrades: closedPositions.length,
+        winningTrades: winningTrades.length,
+        losingTrades: losingTrades.length,
+        maxDrawdown: this.calculateMaxDrawdown(closedPositions),
+        sharpeRatio: this.calculateSharpeRatio(closedPositions),
+      };
+
+      this.updateStatistics(statistics);
+      return statistics;
+    } catch (error) {
+      console.error('Failed to calculate statistics:', error);
+      return this.getStatistics();
+    }
+  }
+
+  calculateMaxDrawdown(positions) {
+    // Simplified max drawdown calculation
+    let peak = 0;
+    let maxDrawdown = 0;
+
+    for (const position of positions) {
+      if (position.unrealizedPnl > peak) {
+        peak = position.unrealizedPnl;
+      }
+      const drawdown = peak - position.unrealizedPnl;
+      if (drawdown > maxDrawdown) {
+        maxDrawdown = drawdown;
+      }
+    }
+
+    return maxDrawdown;
+  }
+
+  calculateSharpeRatio(positions) {
+    // Simplified Sharpe ratio calculation
+    if (positions.length < 2) return 0;
+
+    const returns = positions.map(p => p.unrealizedPnl);
+    const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;
+    const variance = returns.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / returns.length;
+    const stdDev = Math.sqrt(variance);
+
+    return stdDev === 0 ? 0 : mean / stdDev;
   }
 
   // General methods
@@ -264,33 +492,34 @@ class StateManager {
       statistics: this.getStatistics(),
       positions: this.getActivePositions().length,
       signals: this.getTotalSignals(),
-      logs: this.getLogs().length
-    }
+      logs: this.getLogs().length,
+      connectionStatus: this.getConnectionStatus(),
+    };
   }
 
   // Reset all state
   resetState() {
-    this.store.clear()
-    console.log('State reset to defaults')
+    this.store.clear();
+    console.log('State reset to defaults');
   }
 
   // Export state
   exportState() {
-    return JSON.stringify(this.store.store, null, 2)
+    return JSON.stringify(this.store.store, null, 2);
   }
 
   // Import state
   importState(stateJson) {
     try {
-      const state = JSON.parse(stateJson)
-      this.store.set(state)
-      console.log('State imported successfully')
-      return true
+      const state = JSON.parse(stateJson);
+      this.store.set(state);
+      console.log('State imported successfully');
+      return true;
     } catch (error) {
-      console.error('Failed to import state:', error)
-      throw error
+      console.error('Failed to import state:', error);
+      throw error;
     }
   }
 }
 
-module.exports = StateManager
+module.exports = StateManager;

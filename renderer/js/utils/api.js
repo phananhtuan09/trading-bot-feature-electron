@@ -1,164 +1,194 @@
 class ElectronAPI {
   constructor() {
-    this.setupIpcListeners()
+    this.setupIpcListeners();
   }
 
   // Bot control methods
   async startBot() {
     try {
-      return await window.electronAPI.startBot()
+      return await window.electronAPI.startBot();
     } catch (error) {
-      console.error('Error starting bot:', error)
-      throw error
+      console.error('Lỗi khi khởi động bot:', error);
+      throw error;
     }
   }
 
   async stopBot() {
     try {
-      return await window.electronAPI.stopBot()
+      return await window.electronAPI.stopBot();
     } catch (error) {
-      console.error('Error stopping bot:', error)
-      throw error
+      console.error('Lỗi khi dừng bot:', error);
+      throw error;
     }
   }
 
   async startOrders() {
     try {
-      return await window.electronAPI.startOrders()
+      return await window.electronAPI.startOrders();
     } catch (error) {
-      console.error('Error starting orders:', error)
-      throw error
+      console.error('Lỗi khi khởi động lệnh:', error);
+      throw error;
     }
   }
 
   async stopOrders() {
     try {
-      return await window.electronAPI.stopOrders()
+      return await window.electronAPI.stopOrders();
     } catch (error) {
-      console.error('Error stopping orders:', error)
-      throw error
+      console.error('Lỗi khi dừng lệnh:', error);
+      throw error;
     }
   }
 
   async getBotStatus() {
     try {
-      return await window.electronAPI.getBotStatus()
+      return await window.electronAPI.getBotStatus();
     } catch (error) {
-      console.error('Error getting bot status:', error)
-      return null
+      console.error('Lỗi khi lấy trạng thái bot:', error);
+      return null;
     }
   }
 
   // Configuration methods
   async getConfig() {
     try {
-      return await window.electronAPI.getConfig()
+      return await window.electronAPI.getConfig();
     } catch (error) {
-      console.error('Error getting config:', error)
-      return null
+      console.error('Lỗi khi lấy cấu hình:', error);
+      return null;
     }
   }
 
   async saveConfig(config) {
     try {
-      return await window.electronAPI.saveConfig(config)
+      return await window.electronAPI.saveConfig(config);
     } catch (error) {
-      console.error('Error saving config:', error)
-      throw error
+      console.error('Lỗi khi lưu cấu hình:', error);
+      throw error;
     }
   }
 
   // Data methods
   async getPositions() {
     try {
-      return await window.electronAPI.getPositions()
+      return await window.electronAPI.getPositions();
     } catch (error) {
-      console.error('Error getting positions:', error)
-      return []
+      console.error('Lỗi khi lấy vị thế:', error);
+      return [];
     }
   }
 
   async getSignals() {
     try {
-      return await window.electronAPI.getSignals()
+      return await window.electronAPI.getSignals();
     } catch (error) {
-      console.error('Error getting signals:', error)
-      return []
+      console.error('Lỗi khi lấy tín hiệu:', error);
+      return [];
     }
   }
 
   async getLogs() {
     try {
-      return await window.electronAPI.getLogs()
+      return await window.electronAPI.getLogs();
     } catch (error) {
-      console.error('Error getting logs:', error)
-      return []
+      console.error('Lỗi khi lấy logs:', error);
+      return [];
     }
   }
 
   async getStats() {
     try {
-      return await window.electronAPI.getStats()
+      return await window.electronAPI.getStats();
     } catch (error) {
-      console.error('Error getting stats:', error)
-      return null
+      console.error('Lỗi khi lấy thống kê:', error);
+      return null;
+    }
+  }
+
+  // Position management methods
+  async closePosition(symbol, side) {
+    try {
+      return await window.electronAPI.closePosition(symbol, side);
+    } catch (error) {
+      console.error('Lỗi khi đóng vị thế:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Signal execution methods
+  async executeSignal(signalId) {
+    try {
+      return await window.electronAPI.executeSignal(signalId);
+    } catch (error) {
+      console.error('Lỗi khi thực thi tín hiệu:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Connection status methods
+  async checkConnections() {
+    try {
+      return await window.electronAPI.checkConnections();
+    } catch (error) {
+      console.error('Lỗi khi kiểm tra kết nối:', error);
+      return { success: false, error: error.message };
     }
   }
 
   // Update methods
   async checkForUpdates() {
     try {
-      return await window.electronAPI.checkForUpdates()
+      return await window.electronAPI.checkForUpdates();
     } catch (error) {
-      console.error('Error checking for updates:', error)
-      return null
+      console.error('Lỗi khi kiểm tra bản cập nhật:', error);
+      return null;
     }
   }
 
   async installUpdate() {
     try {
-      return await window.electronAPI.installUpdate()
+      return await window.electronAPI.installUpdate();
     } catch (error) {
-      console.error('Error installing update:', error)
-      throw error
+      console.error('Lỗi khi cài đặt bản cập nhật:', error);
+      throw error;
     }
   }
 
   // Event listeners
   onBotStatusUpdate(callback) {
-    window.electronAPI.onBotStatusUpdate(callback)
+    window.electronAPI.onBotStatusUpdate(callback);
   }
 
   onNewSignal(callback) {
-    window.electronAPI.onNewSignal(callback)
+    window.electronAPI.onNewSignal(callback);
   }
 
   onPositionUpdate(callback) {
-    window.electronAPI.onPositionUpdate(callback)
+    window.electronAPI.onPositionUpdate(callback);
   }
 
   onUpdateAvailable(callback) {
-    window.electronAPI.onUpdateAvailable(callback)
+    window.electronAPI.onUpdateAvailable(callback);
   }
 
   onDownloadProgress(callback) {
-    window.electronAPI.onDownloadProgress(callback)
+    window.electronAPI.onDownloadProgress(callback);
   }
 
   onUpdateDownloaded(callback) {
-    window.electronAPI.onUpdateDownloaded(callback)
+    window.electronAPI.onUpdateDownloaded(callback);
   }
 
   // Remove listeners
   removeAllListeners(channel) {
-    window.electronAPI.removeAllListeners(channel)
+    window.electronAPI.removeAllListeners(channel);
   }
 
   setupIpcListeners() {
     // Setup any additional listeners if needed
-    console.log('ElectronAPI initialized')
+    console.log('ElectronAPI đã khởi tạo');
   }
 }
 
 // Export for use in other modules
-window.ElectronAPI = ElectronAPI
+window.ElectronAPI = ElectronAPI;

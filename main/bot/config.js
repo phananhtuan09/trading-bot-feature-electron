@@ -1,4 +1,4 @@
-require('dotenv').config()
+require('dotenv').config();
 
 const STRATEGY_CONFIG = {
   INTERVAL: '1h', // Khoảng thời gian của mỗi nến (ví dụ: '1h' là 1 giờ)
@@ -43,7 +43,7 @@ const STRATEGY_CONFIG = {
   ATR: {
     PERIOD: 14, // Số nến để tính ATR
   },
-}
+};
 
 module.exports = {
   STRATEGY_CONFIG: STRATEGY_CONFIG,
@@ -52,6 +52,7 @@ module.exports = {
     API_SECRET: process.env.BINANCE_API_SECRET, // Bí mật API Binance
     TEST_API_KEY: process.env.BINANCE_TEST_API_KEY, // Khóa API testnet Binance
     TEST_API_SECRET: process.env.BINANCE_TEST_API_SECRET, // Bí mật API testnet Binance
+    IS_TESTING: process.env.BINANCE_IS_TESTING === 'true', // Chế độ testnet
   },
   DISCORD: {
     BOT_TOKEN: process.env.DISCORD_BOT_TOKEN, // Token bot Discord
@@ -73,4 +74,4 @@ module.exports = {
     MAX_ORDERS_PER_DAY: Number(process.env.MAX_ORDERS_PER_DAY), // Số lệnh tối đa mỗi ngày
     ORDER_LIMIT_PER_SCAN: Number(process.env.ORDER_LIMIT_PER_SCAN), // Giới hạn lệnh mỗi lần quét
   },
-}
+};

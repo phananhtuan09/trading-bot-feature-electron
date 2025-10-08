@@ -22,25 +22,38 @@
     "build:all": "electron-builder --win --linux",
     "dist": "electron-builder --publish=never",
     "publish": "electron-builder --publish=always",
-    "postinstall": "electron-builder install-app-deps"
+    "postinstall": "electron-builder install-app-deps",
+    "lint": "eslint . --ext .js",
+    "lint:fix": "eslint . --ext .js --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "format:staged": "prettier --write --ignore-unknown",
+    "check": "npm run lint && npm run format:check",
+    "fix": "npm run lint:fix && npm run format"
   },
   "dependencies": {
-    "electron-updater": "^6.1.7",
-    "electron-store": "^8.1.0",
     "axios": "^1.8.4",
     "binance-api-node": "^0.12.9",
     "discord.js": "^14.19.3",
+    "dotenv": "^16.4.7",
+    "electron-store": "^8.1.0",
+    "electron-updater": "^6.1.7",
+    "node-schedule": "^2.1.1",
     "node-telegram-bot-api": "^0.66.0",
+    "p-limit": "^2.3.0",
     "technicalindicators": "^3.1.0",
     "winston": "^3.17.0",
-    "winston-daily-rotate-file": "^5.0.0",
-    "dotenv": "^16.4.7",
-    "node-schedule": "^2.1.1",
-    "p-limit": "^2.3.0"
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.46.0",
+    "@typescript-eslint/parser": "^8.46.0",
     "electron": "^28.0.0",
-    "electron-builder": "^24.6.4"
+    "electron-builder": "^24.6.4",
+    "eslint": "^9.37.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2"
   },
   "build": {
     "appId": "com.tradingbot.app",
@@ -62,11 +75,16 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64", "ia32"]
+          "arch": [
+            "x64",
+            "ia32"
+          ]
         },
         {
           "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icons/icon.ico",
@@ -77,11 +95,15 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "build/icons/icon.png",

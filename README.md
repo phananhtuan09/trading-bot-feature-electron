@@ -15,6 +15,7 @@ Desktop application for crypto trading bot built with Electron.
 ## 📦 Quick Start
 
 ### 🚀 Auto Setup (Recommended)
+
 ```bash
 # Clone the repository
 git clone <your-github-repo-url>
@@ -31,6 +32,7 @@ npm run dev
 ```
 
 ### 🔧 Manual Setup
+
 ```bash
 # Clone the repository
 git clone <your-github-repo-url>
@@ -48,6 +50,7 @@ npm run dev
 ```
 
 ### Production Build
+
 ```bash
 # Build for Windows
 npm run build:win
@@ -106,10 +109,12 @@ The app automatically checks for updates from GitHub Releases:
 ## 🛠️ Development
 
 ### Prerequisites
+
 - Node.js 18+
 - npm or yarn
 
 ### Setup
+
 ```bash
 git clone <repository>
 cd trading-bot-electron
@@ -118,6 +123,7 @@ npm run dev
 ```
 
 ### Build
+
 ```bash
 npm run build:all
 ```
@@ -137,6 +143,7 @@ MIT License - see LICENSE file for details.
 ## 📞 Support
 
 For support and questions:
+
 - Create an issue on GitHub
 - Check documentation
 - Contact development team

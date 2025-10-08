@@ -1,407 +1,419 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trading Bot Dashboard</title>
-    <link rel="stylesheet" href="styles/main.css">
-</head>
-<body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bảng điều khiển Trading Bot</title>
+    <link rel="stylesheet" href="styles/main.css" />
+  </head>
+  <body>
     <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1>🤖 Trading Bot</h1>
-            <div class="status-badges">
-                <span class="status-badge inactive" id="botStatus">Bot: Stopped</span>
-                <span class="status-badge inactive" id="orderStatus">Order: Inactive</span>
-            </div>
+      <!-- Header -->
+      <div class="header">
+        <h1>🤖 Trading Bot</h1>
+        <div class="status-badges">
+          <span class="status-badge inactive" id="botStatus">Bot: Dừng</span>
+          <span class="status-badge inactive" id="orderStatus">Lệnh: Không hoạt động</span>
+        </div>
+      </div>
+
+      <!-- Stats Overview -->
+      <div class="stats-overview">
+        <div class="stat-card">
+          <div class="stat-card-title">💰 Tài khoản</div>
+          <div class="stat-row">
+            <span class="stat-label">Số dư</span>
+            <span class="stat-value" id="balance">0 USDT</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Lợi nhuận</span>
+            <span class="stat-value" id="profit">+0.00 (0%)</span>
+          </div>
         </div>
 
-        <!-- Stats Overview -->
-        <div class="stats-overview">
-            <div class="stat-card">
-                <div class="stat-card-title">💰 Tài khoản</div>
-                <div class="stat-row">
-                    <span class="stat-label">Số dư</span>
-                    <span class="stat-value" id="balance">0 USDT</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Lợi nhuận</span>
-                    <span class="stat-value" id="profit">+0.00 (0%)</span>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-card-title">📊 Lệnh</div>
-                <div class="stat-row">
-                    <span class="stat-label">Hôm nay</span>
-                    <span class="stat-value" id="ordersToday">0 / 10</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Tổng</span>
-                    <span class="stat-value" id="totalOrders">0</span>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-card-title">🔌 Kết nối</div>
-                <div class="stat-row">
-                    <span class="stat-label">Binance</span>
-                    <span class="stat-value" id="binanceStatus">❌</span>
-                </div>
-                <div class="stat-row">
-                    <span class="stat-label">Discord/TG</span>
-                    <span class="stat-value" id="notificationStatus">❌</span>
-                </div>
-            </div>
+        <div class="stat-card">
+          <div class="stat-card-title">📊 Lệnh</div>
+          <div class="stat-row">
+            <span class="stat-label">Hôm nay</span>
+            <span class="stat-value" id="ordersToday">0 / 10</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Tổng</span>
+            <span class="stat-value" id="totalOrders">0</span>
+          </div>
         </div>
 
-        <!-- Tabs Container -->
-        <div class="tabs-container">
-            <div class="tabs">
-                <div class="tab active" onclick="switchTab('positions')">💼 Vị thế</div>
-                <div class="tab" onclick="switchTab('signals')">📡 Tín hiệu</div>
-                <div class="tab" onclick="switchTab('logs')">📋 Logs</div>
-            </div>
-
-            <!-- Tab: Open Positions -->
-            <div id="positions" class="tab-content active">
-                <div class="table-container">
-                    <table id="positionsTable">
-                        <thead>
-                            <tr>
-                                <th>Symbol</th>
-                                <th>Side</th>
-                                <th>Entry</th>
-                                <th>TP/SL</th>
-                                <th>PNL</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="positionsTableBody">
-                            <!-- Positions will be populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Tab: Signals -->
-            <div id="signals" class="tab-content">
-                <div class="table-container">
-                    <table id="signalsTable">
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Symbol</th>
-                                <th>Side</th>
-                                <th>Price</th>
-                                <th>TP/SL</th>
-                                <th>Conf</th>
-                                <th></th>
-                            </tr>
-                        </thead>
-                        <tbody id="signalsTableBody">
-                            <!-- Signals will be populated dynamically -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            <!-- Tab: Logs -->
-            <div id="logs" class="tab-content">
-                <div class="log-container" id="logContainer">
-                    <!-- Logs will be populated dynamically -->
-                </div>
-            </div>
+        <div class="stat-card">
+          <div class="stat-card-title">🔌 Kết nối</div>
+          <div class="stat-row">
+            <span class="stat-label">Binance</span>
+            <span class="stat-value" id="binanceStatus">❌</span>
+          </div>
+          <div class="stat-row">
+            <span class="stat-label">Discord/TG</span>
+            <span class="stat-value" id="notificationStatus">❌</span>
+          </div>
         </div>
+      </div>
+
+      <!-- Tabs Container -->
+      <div class="tabs-container">
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('positions')">💼 Vị thế</div>
+          <div class="tab" onclick="switchTab('signals')">📡 Tín hiệu</div>
+          <div class="tab" onclick="switchTab('logs')">📋 Logs</div>
+        </div>
+
+        <!-- Tab: Open Positions -->
+        <div id="positions" class="tab-content active">
+          <div class="table-container">
+            <table id="positionsTable">
+              <thead>
+                <tr>
+                  <th>Cặp tiền</th>
+                  <th>Hướng</th>
+                  <th>Giá vào</th>
+                  <th>Giá hiện tại</th>
+                  <th>Lãi/Lỗ</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="positionsTableBody">
+                <!-- Positions will be populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab: Signals -->
+        <div id="signals" class="tab-content">
+          <div class="table-container">
+            <table id="signalsTable">
+              <thead>
+                <tr>
+                  <th>Thời gian</th>
+                  <th>Cặp tiền</th>
+                  <th>Hướng</th>
+                  <th>Giá</th>
+                  <th>TP/SL</th>
+                  <th>Độ tin cậy</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="signalsTableBody">
+                <!-- Signals will be populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab: Logs -->
+        <div id="logs" class="tab-content">
+          <div class="log-container" id="logContainer">
+            <!-- Logs will be populated dynamically -->
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Fixed Action Buttons -->
     <div class="fixed-actions">
-        <div class="action-buttons">
-            <button class="btn btn-success" id="startBtn">▶️ Start</button>
-            <button class="btn btn-danger" id="stopBtn">⏸️ Stop</button>
-            <button class="btn btn-primary" id="startOrderBtn">📈 Start Order</button>
-            <button class="btn btn-warning" id="stopOrderBtn">🛑 Stop Order</button>
-            <button class="btn btn-secondary" id="settingsBtn">⚙️ Settings</button>
-        </div>
-        <div style="text-align: center; margin-top: 8px;">
-            <button class="btn btn-warning" id="reportBtn" style="width: calc(100% - 20px); max-width: 1180px;">📋 Report</button>
-        </div>
+      <div class="action-buttons">
+        <button class="btn btn-success" id="startBtn">▶️ Bắt đầu</button>
+        <button class="btn btn-danger" id="stopBtn">⏸️ Dừng</button>
+        <button class="btn btn-primary" id="startOrderBtn">📈 Bắt đầu lệnh</button>
+        <button class="btn btn-warning" id="stopOrderBtn">🛑 Dừng lệnh</button>
+        <button class="btn btn-secondary" id="settingsBtn">⚙️ Cài đặt</button>
+      </div>
+      <div style="text-align: center; margin-top: 8px">
+        <button
+          class="btn btn-warning"
+          id="reportBtn"
+          style="width: calc(100% - 20px); max-width: 1180px"
+        >
+          📋 Báo cáo
+        </button>
+      </div>
     </div>
 
     <!-- Settings Modal -->
     <div id="settingsModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>⚙️ Cài đặt</h2>
-                <button class="close-modal" id="closeSettingsModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <!-- Settings Tabs -->
-                <div class="modal-tabs">
-                    <div class="modal-tab active" onclick="switchSettingsTab('strategy')">📊 Chiến lược</div>
-                    <div class="modal-tab" onclick="switchSettingsTab('keys')">🔑 API Keys</div>
-                    <div class="modal-tab" onclick="switchSettingsTab('app')">🎛️ App Config</div>
-                </div>
-
-                <!-- Tab: Strategy Settings -->
-                <div id="strategy" class="modal-tab-content active">
-                    <div class="section-title">Cài đặt chung</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Interval</label>
-                            <select id="interval">
-                                <option value="1m">1m</option>
-                                <option value="5m">5m</option>
-                                <option value="15m">15m</option>
-                                <option value="1h" selected>1h</option>
-                                <option value="4h">4h</option>
-                                <option value="1d">1d</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Quote Asset</label>
-                            <input type="text" id="quoteAsset" value="USDT" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label>Max Symbols</label>
-                            <input type="number" id="maxSymbols" value="500">
-                        </div>
-                        <div class="form-group">
-                            <label>Concurrency Limit</label>
-                            <input type="number" id="concurrencyLimit" value="20">
-                        </div>
-                        <div class="form-group">
-                            <label>Max Candles Hold</label>
-                            <input type="number" id="maxCandlesHold" value="96">
-                        </div>
-                    </div>
-
-                    <div class="section-title">Filter Settings</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Trend MA Period</label>
-                            <input type="number" id="trendMaPeriod" value="200">
-                        </div>
-                        <div class="form-group">
-                            <label>Min Trade Volume (USDT)</label>
-                            <input type="number" id="minTradeVolume" value="1000000">
-                        </div>
-                        <div class="form-group">
-                            <label>Min Confidence Score</label>
-                            <input type="number" id="minConfidenceScore" value="60" min="0" max="100">
-                        </div>
-                    </div>
-
-                    <div class="section-title">Bollinger Bands Settings</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Period</label>
-                            <input type="number" id="bbPeriod" value="20">
-                        </div>
-                        <div class="form-group">
-                            <label>Standard Deviation</label>
-                            <input type="number" id="bbStdDev" value="2" step="0.1">
-                        </div>
-                    </div>
-
-                    <div class="section-title">RSI Settings</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Period</label>
-                            <input type="number" id="rsiPeriod" value="14">
-                        </div>
-                    </div>
-
-                    <div class="section-title">MACD Settings</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Fast Period</label>
-                            <input type="number" id="macdFastPeriod" value="12">
-                        </div>
-                        <div class="form-group">
-                            <label>Slow Period</label>
-                            <input type="number" id="macdSlowPeriod" value="26">
-                        </div>
-                        <div class="form-group">
-                            <label>Signal Period</label>
-                            <input type="number" id="macdSignalPeriod" value="9">
-                        </div>
-                    </div>
-
-                    <div class="section-title">EMA Settings</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Short Period</label>
-                            <input type="number" id="emaShortPeriod" value="20">
-                        </div>
-                        <div class="form-group">
-                            <label>Long Period</label>
-                            <input type="number" id="emaLongPeriod" value="50">
-                        </div>
-                    </div>
-
-                    <div class="section-title">ADX Settings</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Period</label>
-                            <input type="number" id="adxPeriod" value="14">
-                        </div>
-                    </div>
-
-                    <div class="section-title">ATR Settings</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Period</label>
-                            <input type="number" id="atrPeriod" value="14">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab: API Keys -->
-                <div id="keys" class="modal-tab-content">
-                    <div class="section-title">Binance API</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Testing Mode</label>
-                            <select id="testingMode">
-                                <option value="false">Production</option>
-                                <option value="true">Testing</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label>API Key</label>
-                            <input type="text" id="apiKey" placeholder="Nhập Binance API Key">
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label>API Secret</label>
-                            <input type="password" id="apiSecret" placeholder="Nhập Binance API Secret">
-                        </div>
-                    </div>
-
-                    <div class="section-title">Discord Integration</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Enable Discord</label>
-                            <select id="discordEnabled">
-                                <option value="false">Disabled</option>
-                                <option value="true">Enabled</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label>Bot Token</label>
-                            <input type="password" id="discordToken" placeholder="Nhập Discord Bot Token">
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label>Channel ID</label>
-                            <input type="text" id="discordChannelId" placeholder="Nhập Discord Channel ID">
-                        </div>
-                    </div>
-
-                    <div class="section-title">Telegram Integration</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Enable Telegram</label>
-                            <select id="telegramEnabled">
-                                <option value="false">Disabled</option>
-                                <option value="true">Enabled</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label>Bot Token</label>
-                            <input type="password" id="telegramToken" placeholder="Nhập Telegram Bot Token">
-                        </div>
-                        <div class="form-group" style="grid-column: 1 / -1;">
-                            <label>Chat ID</label>
-                            <input type="text" id="telegramChatId" placeholder="Nhập Telegram Chat ID">
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Tab: App Config -->
-                <div id="app" class="modal-tab-content">
-                    <div class="section-title">Order Settings</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Leverage (Đòn bẩy)</label>
-                            <input type="number" id="leverage" value="20" min="1" max="125">
-                        </div>
-                        <div class="form-group">
-                            <label>Quantity per Order (USDT)</label>
-                            <input type="number" id="quantity" value="10" min="1">
-                        </div>
-                        <div class="form-group">
-                            <label>Max Orders Per Day</label>
-                            <input type="number" id="maxOrdersPerDay" value="10" min="1">
-                        </div>
-                        <div class="form-group">
-                            <label>Order Limit Per Scan</label>
-                            <input type="number" id="orderLimitPerScan" value="3" min="1">
-                        </div>
-                    </div>
-
-                    <div class="section-title">Bot Settings</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Scan Interval (ms)</label>
-                            <input type="number" id="scanInterval" value="3600000" min="60000">
-                        </div>
-                        <div class="form-group">
-                            <label>Enable Logging</label>
-                            <select id="loggingEnabled">
-                                <option value="true">Enabled</option>
-                                <option value="false">Disabled</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="section-title">Risk Management</div>
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Min Confidence Score</label>
-                            <input type="number" id="riskMinConfidence" value="10" min="0" max="100">
-                        </div>
-                        <div class="form-group">
-                            <label>Max Candles Hold</label>
-                            <input type="number" id="riskMaxCandles" value="96" min="10">
-                        </div>
-                    </div>
-                </div>
-
-                <div style="margin-top: 20px; display: flex; gap: 10px;">
-                    <button class="btn btn-success" style="flex: 1;" id="saveSettingsBtn">💾 Lưu cấu hình</button>
-                    <button class="btn btn-warning" style="flex: 1;" id="resetSettingsBtn">🔄 Đặt lại</button>
-                </div>
-            </div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2>⚙️ Cài đặt</h2>
+          <button class="close-modal" id="closeSettingsModal">&times;</button>
         </div>
+        <div class="modal-body">
+          <!-- Settings Tabs -->
+          <div class="modal-tabs">
+            <div class="modal-tab active" onclick="switchSettingsTab('strategy', event)">
+              📊 Chiến lược
+            </div>
+            <div class="modal-tab" onclick="switchSettingsTab('keys', event)">🔑 API Keys</div>
+            <div class="modal-tab" onclick="switchSettingsTab('app', event)">🎛️ App Config</div>
+          </div>
+
+          <!-- Tab: Strategy Settings -->
+          <div id="strategy" class="modal-tab-content active">
+            <div class="section-title">Cài đặt chung</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Khung thời gian</label>
+                <select id="interval">
+                  <option value="1m">1m</option>
+                  <option value="5m">5m</option>
+                  <option value="15m">15m</option>
+                  <option value="1h" selected>1h</option>
+                  <option value="4h">4h</option>
+                  <option value="1d">1d</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Tài sản cơ sở</label>
+                <input type="text" id="quoteAsset" value="USDT" readonly />
+              </div>
+              <div class="form-group">
+                <label>Số cặp tiền tối đa</label>
+                <input type="number" id="maxSymbols" value="500" />
+              </div>
+              <div class="form-group">
+                <label>Giới hạn đồng thời</label>
+                <input type="number" id="concurrencyLimit" value="20" />
+              </div>
+              <div class="form-group">
+                <label>Số nến giữ tối đa</label>
+                <input type="number" id="maxCandlesHold" value="96" />
+              </div>
+            </div>
+
+            <div class="section-title">Cài đặt bộ lọc</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Chu kỳ MA xu hướng</label>
+                <input type="number" id="trendMaPeriod" value="200" />
+              </div>
+              <div class="form-group">
+                <label>Khối lượng giao dịch tối thiểu (USDT)</label>
+                <input type="number" id="minTradeVolume" value="1000000" />
+              </div>
+              <div class="form-group">
+                <label>Điểm tin cậy tối thiểu</label>
+                <input type="number" id="minConfidenceScore" value="60" min="0" max="100" />
+              </div>
+            </div>
+
+            <div class="section-title">Cài đặt Bollinger Bands</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Chu kỳ</label>
+                <input type="number" id="bbPeriod" value="20" />
+              </div>
+              <div class="form-group">
+                <label>Độ lệch chuẩn</label>
+                <input type="number" id="bbStdDev" value="2" step="0.1" />
+              </div>
+            </div>
+
+            <div class="section-title">Cài đặt RSI</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Chu kỳ</label>
+                <input type="number" id="rsiPeriod" value="14" />
+              </div>
+            </div>
+
+            <div class="section-title">Cài đặt MACD</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Chu kỳ nhanh</label>
+                <input type="number" id="macdFastPeriod" value="12" />
+              </div>
+              <div class="form-group">
+                <label>Chu kỳ chậm</label>
+                <input type="number" id="macdSlowPeriod" value="26" />
+              </div>
+              <div class="form-group">
+                <label>Chu kỳ tín hiệu</label>
+                <input type="number" id="macdSignalPeriod" value="9" />
+              </div>
+            </div>
+
+            <div class="section-title">Cài đặt EMA</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Chu kỳ ngắn</label>
+                <input type="number" id="emaShortPeriod" value="20" />
+              </div>
+              <div class="form-group">
+                <label>Chu kỳ dài</label>
+                <input type="number" id="emaLongPeriod" value="50" />
+              </div>
+            </div>
+
+            <div class="section-title">Cài đặt ADX</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Chu kỳ</label>
+                <input type="number" id="adxPeriod" value="14" />
+              </div>
+            </div>
+
+            <div class="section-title">Cài đặt ATR</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Chu kỳ</label>
+                <input type="number" id="atrPeriod" value="14" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: API Keys -->
+          <div id="keys" class="modal-tab-content">
+            <div class="section-title">Binance API</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Loại tài khoản</label>
+                <select id="testingMode">
+                  <option value="false">Thật</option>
+                  <option value="true">Testnet</option>
+                </select>
+              </div>
+              <div class="form-group" style="grid-column: 1 / -1">
+                <label>API Key</label>
+                <input type="text" id="apiKey" placeholder="Nhập Binance API Key" />
+              </div>
+              <div class="form-group" style="grid-column: 1 / -1">
+                <label>API Secret</label>
+                <input type="password" id="apiSecret" placeholder="Nhập Binance API Secret" />
+              </div>
+            </div>
+
+            <div class="section-title">Tích hợp Discord</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Bật Discord</label>
+                <select id="discordEnabled">
+                  <option value="false">Tắt</option>
+                  <option value="true">Bật</option>
+                </select>
+              </div>
+              <div class="form-group" style="grid-column: 1 / -1">
+                <label>Bot Token</label>
+                <input type="password" id="discordToken" placeholder="Nhập Discord Bot Token" />
+              </div>
+              <div class="form-group" style="grid-column: 1 / -1">
+                <label>Channel ID</label>
+                <input type="text" id="discordChannelId" placeholder="Nhập Discord Channel ID" />
+              </div>
+            </div>
+
+            <div class="section-title">Tích hợp Telegram</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Bật Telegram</label>
+                <select id="telegramEnabled">
+                  <option value="false">Tắt</option>
+                  <option value="true">Bật</option>
+                </select>
+              </div>
+              <div class="form-group" style="grid-column: 1 / -1">
+                <label>Bot Token</label>
+                <input type="password" id="telegramToken" placeholder="Nhập Telegram Bot Token" />
+              </div>
+              <div class="form-group" style="grid-column: 1 / -1">
+                <label>Chat ID</label>
+                <input type="text" id="telegramChatId" placeholder="Nhập Telegram Chat ID" />
+              </div>
+            </div>
+          </div>
+
+          <!-- Tab: App Config -->
+          <div id="app" class="modal-tab-content">
+            <div class="section-title">Cài đặt lệnh</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Leverage (Đòn bẩy)</label>
+                <input type="number" id="leverage" value="20" min="1" max="125" />
+              </div>
+              <div class="form-group">
+                <label>Số tiền mỗi lệnh (USDT)</label>
+                <input type="number" id="quantity" value="10" min="1" />
+              </div>
+              <div class="form-group">
+                <label>Số lệnh tối đa mỗi ngày</label>
+                <input type="number" id="maxOrdersPerDay" value="10" min="1" />
+              </div>
+              <div class="form-group">
+                <label>Giới hạn lệnh mỗi lần quét</label>
+                <input type="number" id="orderLimitPerScan" value="3" min="1" />
+              </div>
+            </div>
+
+            <div class="section-title">Cài đặt Bot</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Khoảng thời gian quét (ms)</label>
+                <input type="number" id="scanInterval" value="3600000" min="60000" />
+              </div>
+              <div class="form-group">
+                <label>Bật ghi log</label>
+                <select id="loggingEnabled">
+                  <option value="true">Bật</option>
+                  <option value="false">Tắt</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="section-title">Quản lý rủi ro</div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label>Điểm tin cậy tối thiểu</label>
+                <input type="number" id="riskMinConfidence" value="10" min="0" max="100" />
+              </div>
+              <div class="form-group">
+                <label>Số nến giữ tối đa</label>
+                <input type="number" id="riskMaxCandles" value="96" min="10" />
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top: 20px; display: flex; gap: 10px">
+            <button class="btn btn-success" style="flex: 1" id="saveSettingsBtn">
+              💾 Lưu cấu hình
+            </button>
+            <button class="btn btn-warning" style="flex: 1" id="resetSettingsBtn">
+              🔄 Đặt lại
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Report Modal -->
     <div id="reportModal" class="modal">
-        <div class="modal-content" style="max-width: 600px;">
-            <div class="modal-header">
-                <h2>📊 Báo cáo giao dịch</h2>
-                <button class="close-modal" id="closeReportModal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="report-content" id="reportContent">
-                    <!-- Report content will be populated dynamically -->
-                </div>
-            </div>
+      <div class="modal-content" style="max-width: 600px">
+        <div class="modal-header">
+          <h2>📊 Báo cáo giao dịch</h2>
+          <button class="close-modal" id="closeReportModal">&times;</button>
         </div>
+        <div class="modal-body">
+          <div class="report-content" id="reportContent">
+            <!-- Report content will be populated dynamically -->
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Update Notification -->
-    <div id="updateNotification" class="update-notification" style="display: none;">
-        <div class="update-content">
-            <h3>🔄 Update Available</h3>
-            <p id="updateMessage">A new version is available. Would you like to download and install it?</p>
-            <div class="update-actions">
-                <button class="btn btn-primary" id="downloadUpdateBtn">Download</button>
-                <button class="btn btn-secondary" id="dismissUpdateBtn">Later</button>
-            </div>
+    <div id="updateNotification" class="update-notification" style="display: none">
+      <div class="update-content">
+        <h3>🔄 Có bản cập nhật</h3>
+        <p id="updateMessage">Có phiên bản mới. Bạn có muốn tải xuống và cài đặt không?</p>
+        <div class="update-actions">
+          <button class="btn btn-primary" id="downloadUpdateBtn">Tải xuống</button>
+          <button class="btn btn-secondary" id="dismissUpdateBtn">Để sau</button>
         </div>
+      </div>
     </div>
 
     <!-- Scripts -->
@@ -412,5 +424,5 @@
     <script src="js/components/signals.js"></script>
     <script src="js/components/logs.js"></script>
     <script src="js/app.js"></script>
-</body>
+  </body>
 </html>
