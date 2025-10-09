@@ -2,6 +2,15 @@
 class Logs {
   constructor() {
     this.api = new ElectronAPI();
+    this.logContainer = document.getElementById('logContainer');
+    this.init();
+  }
+
+  init() {
+    // Listen for real-time logs from the main process
+    this.api.onNewLog(log => {
+      this.addLogEntry(log);
+    });
   }
 
   async loadLogs() {
@@ -13,52 +22,56 @@ class Logs {
     }
   }
 
-  updateDisplay(logs) {
-    const container = document.getElementById('logContainer');
-    if (!container) return;
+  createLogElement(log) {
+    const logEntry = document.createElement('div');
+    const level = (log.level || 'info').toLowerCase();
+    logEntry.className = `log-entry log-${level}`;
 
-    container.innerHTML = '';
+    const time = new Date(log.timestamp).toLocaleTimeString();
+
+    logEntry.innerHTML = `
+      <span class="log-time">[${time}]</span>
+      <span class="log-level log-${level}">[${level.toUpperCase()}]</span>
+      <span class="log-message">${log.message}</span>
+    `;
+    return logEntry;
+  }
+
+  updateDisplay(logs) {
+    if (!this.logContainer) return;
+
+    this.logContainer.innerHTML = '';
 
     if (!logs || logs.length === 0) {
-      container.innerHTML = '<div class="log-entry log-info">Không có logs nào</div>';
+      this.logContainer.innerHTML = '<div class="log-entry log-info">Không có logs nào</div>';
       return;
     }
 
-    logs.slice(0, 100).forEach(log => {
-      // Show only last 100 logs
-      const logEntry = document.createElement('div');
-      logEntry.className = `log-entry log-${log.level || 'info'}`;
-
-      const time = new Date(log.timestamp).toLocaleTimeString();
-      logEntry.innerHTML = `
-        <span class="log-time">[${time}]</span> 
-        <span class="log-${log.level || 'info'}">${log.message}</span>
-      `;
-      container.appendChild(logEntry);
+    // Display the last 100 logs, preserving chronological order (oldest first)
+    logs.slice(0, 100).reverse().forEach(log => {
+      const logElement = this.createLogElement(log);
+      this.logContainer.appendChild(logElement);
     });
 
     // Auto-scroll to bottom
-    container.scrollTop = container.scrollHeight;
+    this.logContainer.scrollTop = this.logContainer.scrollHeight;
   }
 
-  addLog(log) {
-    const container = document.getElementById('logContainer');
-    if (!container) return;
+  addLogEntry(log) {
+    if (!this.logContainer) return;
 
-    const logEntry = document.createElement('div');
-    logEntry.className = `log-entry log-${log.level || 'info'}`;
+    const logElement = this.createLogElement(log);
+    this.logContainer.appendChild(logElement); // Add new log to the end
 
-    const time = new Date(log.timestamp).toLocaleTimeString();
-    logEntry.innerHTML = `
-      <span class="log-time">[${time}]</span> 
-      <span class="log-${log.level || 'info'}">${log.message}</span>
-    `;
+    // Keep only the last 100 logs by removing the first (oldest) child
+    while (this.logContainer.children.length > 100) {
+      this.logContainer.removeChild(this.logContainer.firstChild);
+    }
 
-    container.insertBefore(logEntry, container.firstChild);
-
-    // Keep only last 100 logs
-    while (container.children.length > 100) {
-      container.removeChild(container.lastChild);
+    // Auto-scroll to bottom if the user is already near the bottom
+    const shouldScroll = this.logContainer.scrollHeight - this.logContainer.clientHeight <= this.logContainer.scrollTop + 50;
+    if (shouldScroll) {
+      this.logContainer.scrollTop = this.logContainer.scrollHeight;
     }
   }
 

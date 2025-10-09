@@ -2,6 +2,7 @@ const pLimit = require('p-limit');
 const { getSymbols } = require('./symbolManager');
 const { analyzeMarket } = require('./dataService');
 const StateManager = require('../database/stateStore');
+const ConfigManager = require('../database/configStore');
 
 // Mock implementations for message sending
 const sendSignalMessage = async signal => {
@@ -17,6 +18,7 @@ class Scanner {
     this.isRunning = false;
     this.scanInterval = null;
     this.stateManager = new StateManager();
+    this.configManager = new ConfigManager();
     this.lastScanTime = null;
     this.scanCount = 0;
   }
@@ -73,13 +75,17 @@ class Scanner {
     this.lastScanTime = Date.now();
     this.scanCount++;
 
+    // Xóa các tín hiệu cũ trước mỗi lần quét
+    this.stateManager.clearSignals();
+
     try {
+      const strategyConfig = this.configManager.getStrategyConfig();
       const symbols = await getSymbols();
-      const scanLimiter = pLimit(20); // Default concurrency limit
+      const concurrencyLimit = strategyConfig.CONCURRENCY_LIMIT || 10;
+      const scanLimiter = pLimit(concurrencyLimit);
       const scanPromises = symbols.map(symbol => scanLimiter(() => analyzeMarket(symbol)));
       const results = await Promise.allSettled(scanPromises);
 
-      let signalCount = 0;
       const errors = [];
       const allSignals = [];
 
@@ -88,35 +94,28 @@ class Scanner {
           errors.push(result.reason);
           continue;
         }
+        if (result.value) {
+          allSignals.push(result.value);
+        }
+      }
 
-        const signal = result.value;
-        if (!signal) continue;
-
-        signalCount++;
-        console.log(
-          `Tín hiệu: ${signal.symbol} | ${signal.decision} | ${signal.marketType} | Strength: ${signal.strength} | TP: ${signal.TP_ROI} | SL: ${signal.SL_ROI}`
-        );
-
-        allSignals.push(signal);
-
-        // Add signal to state
-        this.stateManager.addSignal(signal);
-
-        // Send signal message
-        await sendSignalMessage(signal);
+      // Lưu tất cả tín hiệu mới vào state
+      if (allSignals.length > 0) {
+        this.stateManager.setSignals(allSignals);
+        console.log(`📈 Đã lưu ${allSignals.length} tín hiệu mới.`);
       }
 
       const summary = [
         `📊 Tổng kết quét:`,
         `- Tổng cặp: ${symbols.length}`,
-        `- Tín hiệu: ${signalCount}`,
+        `- Tín hiệu mới: ${allSignals.length}`,
         `- Lỗi: ${errors.length}`,
         `- Thời gian quét: ${new Date().toLocaleString()}`,
       ].join('\n');
 
       console.log(summary);
 
-      // Update state
+      // Cập nhật state và log
       this.stateManager.incrementScans();
       this.stateManager.addLog({
         level: 'info',
@@ -132,7 +131,6 @@ class Scanner {
           message: `Scan errors: ${errors.join(', ')}`,
           type: 'scan_error',
         });
-        return null;
       }
 
       await sendMessage(summary);
@@ -150,7 +148,8 @@ class Scanner {
   }
 
   startIntervalScanning() {
-    const scanInterval = 3600000; // 1 hour default
+    const appConfig = this.configManager.getConfig().CONFIG;
+    const scanInterval = appConfig.SCAN_INTERVAL || 3600000; // Mặc định 1 giờ
     this.scanInterval = setInterval(() => {
       this.performScan();
     }, scanInterval);

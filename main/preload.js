@@ -34,6 +34,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   installUpdate: () => ipcRenderer.invoke('update:install'),
 
   // Event listeners
+  onBackendReady: callback => {
+    ipcRenderer.on('backend-ready', callback);
+  },
   onBotStatusUpdate: callback => {
     ipcRenderer.on('bot:status-update', callback);
   },
@@ -51,6 +54,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   onUpdateDownloaded: callback => {
     ipcRenderer.on('update-downloaded', callback);
+  },
+
+  onNewLog: callback => {
+    ipcRenderer.on('log:new', (event, log) => callback(log));
+  },
+
+  onPositionUpdate: callback => {
+    ipcRenderer.on('position:update', (event, position) => callback(position));
   },
 
   // Remove listeners

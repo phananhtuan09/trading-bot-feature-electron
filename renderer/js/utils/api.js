@@ -155,6 +155,10 @@ class ElectronAPI {
   }
 
   // Event listeners
+  onBackendReady(callback) {
+    window.electronAPI.onBackendReady(callback);
+  }
+
   onBotStatusUpdate(callback) {
     window.electronAPI.onBotStatusUpdate(callback);
   }
@@ -177,6 +181,14 @@ class ElectronAPI {
 
   onUpdateDownloaded(callback) {
     window.electronAPI.onUpdateDownloaded(callback);
+  }
+
+  onNewLog(callback) {
+    window.electronAPI.onNewLog(callback);
+  }
+
+  onPositionUpdate(callback) {
+    window.electronAPI.onPositionUpdate(callback);
   }
 
   // Remove listeners

@@ -35,7 +35,11 @@ class App {
     this.signals = null;
     this.logs = null;
     this.api = new ElectronAPI();
-    this.init();
+
+    // Wait for the backend to be ready before initializing the app
+    this.api.onBackendReady(() => {
+      this.init();
+    });
   }
 
   async init() {

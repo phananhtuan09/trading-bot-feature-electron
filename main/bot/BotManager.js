@@ -14,6 +14,30 @@ class BotManager {
     this.configManager = new ConfigManager();
     this.binanceService = new BinanceService();
     this.mainWindow = null;
+    this.userWs = null; // To hold the WebSocket cleanup function
+  }
+
+  // Handles real-time account updates from Binance WebSocket
+  handleAccountUpdate(data) {
+    if (data.eventType === 'ACCOUNT_UPDATE') {
+      for (const position of data.updateData.updatedPositions) {
+        // Map abbreviated WebSocket property names to full names
+        const positionUpdate = {
+          symbol: position.s,
+          positionAmt: parseFloat(position.pa),
+          unrealizedPnl: parseFloat(position.up),
+          entryPrice: parseFloat(position.ep),
+          markPrice: parseFloat(position.mp),
+        };
+
+        // Update the state store silently
+        this.stateManager.updateSinglePosition(positionUpdate);
+
+        // Push the update to the UI
+        this.emitPositionUpdate(positionUpdate);
+      }
+    }
+    // We could also handle 'ORDER_TRADE_UPDATE' here if needed
   }
 
   setMainWindow(window) {
@@ -30,10 +54,15 @@ class BotManager {
 
       // Initialize bot components
       this.scanner = new Scanner();
-      this.order = new Order(this.scanner); // Truyền scanner vào Order
+      this.order = new Order(); // Scanner không còn được truyền vào nữa
 
       // Start scanning process
       await this.scanner.start();
+
+      // Subscribe to real-time account updates
+      this.userWs = this.binanceService.subscribeToAccountUpdates(
+        this.handleAccountUpdate.bind(this)
+      );
 
       // Emit status update
       this.emitStatusUpdate();
@@ -65,6 +94,12 @@ class BotManager {
       if (this.order) {
         await this.order.stop();
         this.order = null;
+      }
+
+      // Clean up WebSocket connection
+      if (this.userWs) {
+        this.userWs(); // The cleanup function returned by the ws subscription
+        this.userWs = null;
       }
 
       // Emit status update

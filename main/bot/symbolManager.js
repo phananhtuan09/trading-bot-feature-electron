@@ -1,6 +1,6 @@
 const { binanceTestClient: binanceClient } = require('./clients'); // Import binanceClient nếu muốn đặt lệnh trên tk thực
 const { STRATEGY_CONFIG } = require('./config');
-const logger = require('./logger');
+
 
 let symbolCache = {
   lastUpdated: 0,
@@ -29,7 +29,7 @@ async function fetchAllSymbols() {
     //  logger.info(`✅ Đã cập nhật ${validSymbols.length} symbols cho futures`)
     return validSymbols;
   } catch (error) {
-    logger.error(`❌ Lỗi cập nhật symbols cho futures: ${error}`);
+    console.error('Lỗi khi lấy danh sách biểu tượng:', error);
     return [];
   }
 }

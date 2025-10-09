@@ -1,11 +1,42 @@
-const { getCurrentBinanceClient } = require('./clients');
-const { BINANCE } = require('./config');
-const logger = require('./logger');
+const Binance = require('binance-api-node').default;
+const ConfigManager = require('../database/configStore');
+
 
 class BinanceService {
   constructor() {
-    this.client = getCurrentBinanceClient();
-    this.isTestnet = BINANCE.IS_TESTING;
+    const configManager = new ConfigManager();
+    const binanceConfig = configManager.getBinanceConfig();
+
+    this.isTestnet = binanceConfig.IS_TESTING;
+
+    const apiKey = this.isTestnet ? binanceConfig.TEST_API_KEY : binanceConfig.API_KEY;
+    const apiSecret = this.isTestnet ? binanceConfig.TEST_API_SECRET : binanceConfig.API_SECRET;
+
+    const options = { apiKey, apiSecret };
+    if (this.isTestnet) {
+      options.httpFutures = 'https://testnet.binancefuture.com';
+    }
+
+    if (!apiKey || !apiSecret) {
+      console.error('Binance API key and secret are required.');
+      // We don't throw an error here, but calls will fail.
+      // The UI should prevent starting the bot without keys.
+    }
+
+    this.client = Binance(options);
+  }
+
+  // Subscribe to user account updates via WebSocket
+  subscribeToAccountUpdates(callback) {
+    try {
+      console.log('Subscribing to Binance user data stream...');
+      const clean = this.client.ws.user(callback);
+      console.log('Successfully subscribed to user data stream.');
+      // We can return the `clean` function to allow unsubscribing later if needed
+      return clean;
+    } catch (error) {
+      console.error('Failed to subscribe to user data stream:', error);
+    }
   }
 
   // Test connection
@@ -21,7 +52,7 @@ class BinanceService {
         canDeposit: accountInfo.canDeposit,
       };
     } catch (error) {
-      logger.error('Binance connection test failed:', error);
+      console.error('Binance connection test failed:', error);
       return {
         success: false,
         message: `Lỗi kết nối Binance: ${error.message}`,
@@ -45,7 +76,7 @@ class BinanceService {
         accountType: this.isTestnet ? 'Testnet' : 'Mainnet',
       };
     } catch (error) {
-      logger.error('Failed to get account balance:', error);
+      console.error('Failed to get account balance:', error);
       return {
         success: false,
         error: error.message,
@@ -77,7 +108,7 @@ class BinanceService {
         updateTime: position.updateTime,
       }));
     } catch (error) {
-      logger.error('Failed to get positions:', error);
+      console.error('Failed to get positions:', error);
       return [];
     }
   }
@@ -88,7 +119,7 @@ class BinanceService {
       const positions = await this.getPositions();
       return positions.find(pos => pos.symbol === symbol);
     } catch (error) {
-      logger.error(`Failed to get position for ${symbol}:`, error);
+      console.error(`Failed to get position for ${symbol}:`, error);
       return null;
     }
   }
@@ -113,7 +144,7 @@ class BinanceService {
         reduceOnly: true,
       });
 
-      logger.info(`Đã đóng vị thế ${symbol}: ${orderSide} ${quantity}`);
+      console.log(`Đã đóng vị thế ${symbol}: ${orderSide} ${quantity}`);
       return {
         success: true,
         orderId: order.orderId,
@@ -123,7 +154,7 @@ class BinanceService {
         message: `Đã đóng vị thế ${symbol} thành công`,
       };
     } catch (error) {
-      logger.error(`Failed to close position ${symbol}:`, error);
+      console.error(`Failed to close position ${symbol}:`, error);
       return {
         success: false,
         error: error.message,
@@ -168,7 +199,7 @@ class BinanceService {
 
       const order = await this.client.futuresOrder(orderParams);
 
-      logger.info(`Đã đặt lệnh ${symbol}: ${side} ${quantity} ${type}`);
+      console.log(`Đã đặt lệnh ${symbol}: ${side} ${quantity} ${type}`);
       return {
         success: true,
         orderId: order.orderId,
@@ -180,7 +211,7 @@ class BinanceService {
         message: `Đã đặt lệnh ${symbol} thành công`,
       };
     } catch (error) {
-      logger.error(`Failed to place order:`, error);
+      console.error(`Failed to place order:`, error);
       return {
         success: false,
         error: error.message,
@@ -212,7 +243,7 @@ class BinanceService {
         },
       };
     } catch (error) {
-      logger.error(`Failed to get order status:`, error);
+      console.error(`Failed to get order status:`, error);
       return {
         success: false,
         error: error.message,
@@ -242,7 +273,7 @@ class BinanceService {
         workingType: order.workingType,
       }));
     } catch (error) {
-      logger.error(`Failed to get recent orders:`, error);
+      console.error(`Failed to get recent orders:`, error);
       return [];
     }
   }
@@ -262,7 +293,7 @@ class BinanceService {
         })),
       };
     } catch (error) {
-      logger.error('Failed to get exchange info:', error);
+      console.error('Failed to get exchange info:', error);
       return {
         success: false,
         error: error.message,
@@ -297,7 +328,7 @@ class BinanceService {
         count: ticker.count,
       };
     } catch (error) {
-      logger.error(`Failed to get 24hr ticker for ${symbol}:`, error);
+      console.error(`Failed to get 24hr ticker for ${symbol}:`, error);
       return {
         success: false,
         error: error.message,
@@ -305,11 +336,6 @@ class BinanceService {
     }
   }
 
-  // Update client based on config
-  updateClient(config) {
-    this.isTestnet = config.BINANCE.IS_TESTING;
-    this.client = getCurrentBinanceClient();
-  }
 }
 
 module.exports = BinanceService;

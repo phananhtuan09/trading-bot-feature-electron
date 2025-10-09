@@ -3,13 +3,11 @@ const ConfigManager = require('../database/configStore');
 const BinanceService = require('./binanceService');
 
 class Order {
-  constructor(scanner) {
+  constructor() {
     this.isRunning = false;
     this.stateManager = new StateManager();
     this.configManager = new ConfigManager();
     this.binanceService = new BinanceService();
-    this.scanner = scanner; // Nhận scanner từ BotManager
-    this.scanOrderLimit = 3; // Giới hạn đơn giản
   }
 
   // Kiểm tra xem cặp giao dịch có vị thế đang mở hay không
@@ -206,8 +204,8 @@ class Order {
     }
 
     try {
-      // Sử dụng scanner để lấy tín hiệu
-      const signals = await this.scanner.performScan();
+      // Lấy tín hiệu từ StateManager
+      const signals = this.stateManager.getSignals();
       if (!signals || signals.length === 0) {
         console.log('Không có tín hiệu nào để giao dịch.');
         return;
@@ -223,21 +221,24 @@ class Order {
         }
       }
 
-      // Sort and apply scanOrderLimit
+      // Lấy giới hạn lệnh mỗi lần quét từ cấu hình
+      const orderSettings = this.stateManager.getOrdersState();
+      const scanOrderLimit = orderSettings.orderLimitPerScan || 3;
+
+      // Sort by strength and apply scanOrderLimit
       const filteredSignals = validSignals
-        .sort((a, b) => b.TP_ROI - a.TP_ROI)
-        .slice(0, this.scanOrderLimit);
+        .sort((a, b) => b.strength - a.strength)
+        .slice(0, scanOrderLimit);
 
       // Place orders for filtered signals
       for (const signal of filteredSignals) {
         console.log(`Đang thực hiện đặt lệnh cho: ${signal.symbol}`);
         await this.placeOrder(signal);
       }
-
       // Notify if signals were skipped due to scanOrderLimit
-      if (validSignals.length > this.scanOrderLimit) {
-        const skipped = validSignals.slice(this.scanOrderLimit).map(s => s.symbol);
-        console.log(`⚠️ Vượt giới hạn ${this.scanOrderLimit} lệnh/lần, bỏ qua: ${skipped.join(', ')}`);
+      if (validSignals.length > scanOrderLimit) {
+        const skipped = validSignals.slice(scanOrderLimit).map(s => s.symbol);
+        console.log(`⚠️ Vượt giới hạn ${scanOrderLimit} lệnh/lần, bỏ qua: ${skipped.join(', ')}`);
       }
     } catch (error) {
       console.error('Error in order execution:', error);

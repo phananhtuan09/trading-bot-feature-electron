@@ -4,6 +4,7 @@ const { autoUpdater } = require('electron-updater');
 const BotManager = require('./bot/BotManager');
 const ConfigManager = require('./database/configStore');
 const StateManager = require('./database/stateStore');
+const { overrideConsole } = require('./bot/logger'); // Import the new function
 
 class TradingBotApp {
   constructor() {
@@ -12,6 +13,7 @@ class TradingBotApp {
     this.stateManager = new StateManager();
     this.mainWindow = null;
     this.isDev = process.argv.includes('--dev');
+    this.overrideConsole = overrideConsole; // Add method to class
   }
 
   async createWindow() {
@@ -50,8 +52,9 @@ class TradingBotApp {
       this.mainWindow = null;
     });
 
-    // Set main window reference in bot manager
+    // Set main window reference in bot manager and state manager
     this.botManager.setMainWindow(this.mainWindow);
+    this.stateManager.setMainWindow(this.mainWindow);
 
     // Setup IPC handlers
     this.setupIpcHandlers();
@@ -198,6 +201,9 @@ class TradingBotApp {
     ipcMain.handle('update:install', () => {
       autoUpdater.quitAndInstall();
     });
+
+    // Signal to renderer that backend is ready
+    this.mainWindow.webContents.send('backend-ready');
   }
 
   setupAutoUpdater() {
@@ -240,6 +246,7 @@ class TradingBotApp {
   }
 
   async initialize() {
+    this.overrideConsole(); // Activate console override
     try {
       // Initialize managers
       await this.configManager.initialize();

@@ -1,51 +1,62 @@
-const winston = require('winston');
-const DailyRotateFile = require('winston-daily-rotate-file');
+const StateManager = require('../database/stateStore');
 
-const transports = [];
+// This function will be called to override the default console methods
+function overrideConsole() {
+  const stateManager = new StateManager();
 
-if (process.env.IS_DEV_MODE === 'true') {
-  transports.push(
-    new winston.transports.Console({
-      format: winston.format.combine(
-        winston.format.colorize(),
-        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        winston.format.printf(({ timestamp, level, message }) => {
-          const type = level === 'error' ? 'error' : 'log';
-          return `[${timestamp}] [${type}] ${message}`;
-        })
-      ),
-    })
-  );
+  const original = {
+    log: console.log,
+    warn: console.warn,
+    error: console.error,
+    info: console.info,
+    debug: console.debug,
+  };
+
+  const logToStore = (level, args) => {
+    // Convert all arguments to string format
+    const message = args
+      .map(arg => {
+        if (typeof arg === 'object' && arg !== null) {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch (e) {
+            return '[Unserializable Object]';
+          }
+        }
+        return String(arg);
+      })
+      .join(' ');
+
+    // Add to state manager, which will handle storage and pushing to UI
+    stateManager.addLog({ level, message });
+  };
+
+  console.log = (...args) => {
+    original.log.apply(console, args);
+    logToStore('info', args);
+  };
+
+  console.warn = (...args) => {
+    original.warn.apply(console, args);
+    logToStore('warn', args);
+  };
+
+  console.error = (...args) => {
+    original.error.apply(console, args);
+    logToStore('error', args);
+  };
+
+  console.info = (...args) => {
+    original.info.apply(console, args);
+    logToStore('info', args);
+  };
+
+  console.debug = (...args) => {
+    original.debug.apply(console, args);
+    logToStore('debug', args);
+  };
+
+  console.log('Console methods have been overridden to push logs to the UI.');
 }
 
-if (process.env.IS_LOG_ENABLED === 'true') {
-  transports.push(
-    new DailyRotateFile({
-      filename: 'logs/trade/%DATE%.log',
-      datePattern: 'YYYY-MM-DD',
-      zippedArchive: true,
-      maxSize: '20m',
-      maxFiles: '14d',
-      format: winston.format.combine(
-        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        winston.format.printf(({ timestamp, level, message }) => {
-          const type = level === 'error' ? 'error' : 'log';
-          return `[${timestamp}] [${type}] ${message}`;
-        })
-      ),
-    })
-  );
-}
-
-const logger = winston.createLogger({
-  level: 'info',
-  transports,
-});
-
-if (transports.length === 0) {
-  logger.add(
-    new winston.transports.Stream({ stream: require('fs').createWriteStream('/dev/null') })
-  );
-}
-
-module.exports = logger;
+module.exports = { overrideConsole };

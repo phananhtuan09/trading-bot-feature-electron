@@ -486,24 +486,48 @@ tr:hover {
 }
 
 .log-entry {
-  margin-bottom: 5px;
-  line-height: 1.4;
+  padding: 6px 10px;
+  border-bottom: 1px solid #2d3748;
+  font-family: 'Fira Code', monospace;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .log-time {
-  color: #888;
+  color: #a0aec0;
 }
 
-.log-info {
-  color: #00ff00;
+.log-level {
+  font-weight: bold;
+  text-transform: uppercase;
 }
 
-.log-error {
-  color: #ff4444;
+.log-level.log-info {
+  color: #48bb78; /* Green */
 }
 
-.log-warning {
-  color: #ffaa00;
+.log-level.log-error {
+  color: #f56565; /* Red */
+}
+
+.log-level.log-warn {
+  color: #f6ad55; /* Orange */
+}
+
+.log-level.log-debug {
+  color: #4299e1; /* Blue */
+}
+
+.log-message {
+  color: #e2e8f0; /* Light Gray */
+  white-space: pre-wrap; /* Wrap long messages */
+  word-break: break-all;
+}
+
+.log-entry:last-child {
+  border-bottom: none;
 }
 
 /* Update Notification */

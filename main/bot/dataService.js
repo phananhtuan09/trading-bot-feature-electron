@@ -2,7 +2,7 @@ const { binanceTestClient: binanceClient } = require('./clients');
 const TradingStrategies = require('./tradingStrategies');
 const { RSI, BollingerBands, MACD, ADX, EMA } = require('technicalindicators');
 const { STRATEGY_CONFIG } = require('./config');
-const logger = require('./logger');
+
 
 // Lấy dữ liệu lịch sử giá (nến) từ Binance Futures.
 async function getHistoricalData(symbol, interval = STRATEGY_CONFIG.INTERVAL, limit = 200) {
@@ -226,24 +226,26 @@ function formatSignals(signals) {
 function calculateTPAndSL(decision, currentPrice, indicators) {
   const { atr, volatility } = indicators;
   // Tính baseTP và baseSL
-  const baseTP = decision === 'Long' ? currentPrice + 3 * atr : currentPrice - 3 * atr;
-  const baseSL = decision === 'Long' ? currentPrice - 2 * atr : currentPrice + 2 * atr;
+  const tpMultiplier = 3; // Ví dụ: TP gấp 3 lần ATR
+  const slMultiplier = 1.5; // Ví dụ: SL gấp 1.5 lần ATR
+
+  const baseTP = decision === 'Long' ? currentPrice + tpMultiplier * atr : currentPrice - tpMultiplier * atr;
+  const baseSL = decision === 'Long' ? currentPrice - slMultiplier * atr : currentPrice + slMultiplier * atr;
 
   // Tính ROI ban đầu
-  let TP_ROI = (((baseTP - currentPrice) / currentPrice) * 100).toFixed(2);
-  let SL_ROI = (((baseSL - currentPrice) / currentPrice) * 100).toFixed(2);
+  const TP_ROI = Math.abs(((baseTP - currentPrice) / currentPrice) * 100);
+  const SL_ROI = Math.abs(((baseSL - currentPrice) / currentPrice) * 100);
 
-  if (TP_ROI < 20) {
-    TP_ROI = 20;
-  }
+  // Có thể thêm logic điều chỉnh ROI ở đây nếu cần, ví dụ:
+  // if (TP_ROI < 5) TP_ROI = 5;
 
   // Điều chỉnh theo độ biến động
   const volatilityAdjustment = 1 + volatility / 100;
   return {
     TP: baseTP,
     SL: baseSL,
-    TP_ROI: TP_ROI,
-    SL_ROI: -10, // SL lấy tạm
+    TP_ROI: parseFloat(TP_ROI.toFixed(2)),
+    SL_ROI: -parseFloat(SL_ROI.toFixed(2)), // SL_ROI luôn là số âm
   };
 }
 
@@ -371,7 +373,7 @@ async function analyzeMarket(symbol) {
       marketType: result.marketType,
     };
   } catch (error) {
-    logger.error(`Error analyzing ${symbol}: ${error}`);
+    console.error(`Lỗi khi lấy dữ liệu nến cho ${symbol}:`, error);
     return null;
   }
 }

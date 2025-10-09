@@ -72,6 +72,11 @@ class StateManager {
     });
 
     this.binanceService = new BinanceService();
+    this.mainWindow = null; // Add property to hold the window reference
+  }
+
+  setMainWindow(window) {
+    this.mainWindow = window;
   }
 
   async initialize() {
@@ -215,9 +220,37 @@ class StateManager {
     return positions.filter(p => p.status === 'active');
   }
 
+  updateSinglePosition(positionUpdate) {
+    const positions = this.getPositions();
+    const index = positions.findIndex(p => p.symbol === positionUpdate.symbol);
+
+    if (index !== -1) {
+      // Merge new data into the existing position
+      positions[index] = { ...positions[index], ...positionUpdate };
+      this.store.set('positions', positions);
+    } else {
+      // If position doesn't exist, it might be a new one.
+      // For simplicity, we can add it. Or rely on the full update.
+      // For now, let's just update existing ones.
+    }
+  }
+
   // Signals methods
   getSignals() {
     return this.store.get('signals', []);
+  }
+
+  clearSignals() {
+    this.store.set('signals', []);
+  }
+
+  setSignals(signals) {
+    const enrichedSignals = signals.map((signal, index) => ({
+      ...signal,
+      id: `${Date.now()}-${index}`,
+      timestamp: new Date().toISOString(),
+    }));
+    this.store.set('signals', enrichedSignals);
   }
 
   addSignal(signal) {
@@ -227,13 +260,7 @@ class StateManager {
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
     });
-
-    // Keep only last 1000 signals
-    if (signals.length > 1000) {
-      signals.splice(1000);
-    }
-
-    this.store.set('signals', signals);
+    this.setSignals(signals.slice(0, 1000)); // Keep only the last 1000
   }
 
   getTotalSignals() {
@@ -247,11 +274,12 @@ class StateManager {
 
   addLog(log) {
     const logs = this.getLogs();
-    logs.unshift({
+    const newLog = {
       ...log,
       id: Date.now().toString(),
       timestamp: new Date().toISOString(),
-    });
+    };
+    logs.unshift(newLog);
 
     // Keep only last 500 logs
     if (logs.length > 500) {
@@ -259,6 +287,11 @@ class StateManager {
     }
 
     this.store.set('logs', logs);
+
+    // Push the new log to the UI for real-time update
+    if (this.mainWindow) {
+      this.mainWindow.webContents.send('log:new', newLog);
+    }
   }
 
   // Statistics methods
@@ -345,14 +378,33 @@ class StateManager {
         throw new Error('Không tìm thấy tín hiệu');
       }
 
-      // Get current order settings
+      // --- FIX 1: Calculate correct quantity ---
       const orderSettings = this.getOrdersState();
+      const exchangeInfo = await this.binanceService.client.futuresExchangeInfo();
+      const symbolInfo = exchangeInfo.symbols.find(s => s.symbol === signal.symbol);
+      if (!symbolInfo) {
+        throw new Error(`Không tìm thấy thông tin cho symbol: ${signal.symbol}`);
+      }
+      const lotSizeFilter = symbolInfo.filters.find(f => f.filterType === 'LOT_SIZE');
+      const stepSize = parseFloat(lotSizeFilter.stepSize);
+
+      const quantityPerOrder = orderSettings.quantity || 10;
+      const leverage = orderSettings.leverage || 20;
+      const price = signal.price;
+
+      const rawQty = (quantityPerOrder * leverage) / price;
+      const finalQuantity = Math.floor(rawQty / stepSize) * stepSize;
+
+      if (finalQuantity <= 0) {
+        throw new Error('Số lượng tính toán không hợp lệ (quá nhỏ).');
+      }
+      // --- END FIX 1 ---
 
       const orderData = {
         symbol: signal.symbol,
         side: signal.decision === 'Long' ? 'BUY' : 'SELL',
         type: 'MARKET',
-        quantity: orderSettings.quantity,
+        quantity: finalQuantity, // Use calculated quantity
       };
 
       const result = await this.binanceService.placeOrder(orderData);
@@ -361,10 +413,8 @@ class StateManager {
         // Update orders count
         this.incrementDailyOrders();
 
-        // Update positions
+        // Update positions and account data
         await this.updatePositionsData();
-
-        // Update account data
         await this.updateAccountData();
 
         this.addLog({
@@ -372,6 +422,16 @@ class StateManager {
           message: `Đã thực thi tín hiệu ${signal.symbol}: ${signal.decision}`,
           type: 'signal_executed',
         });
+
+        // --- FIX 2: Remove executed signal ---
+        const updatedSignals = this.getSignals().filter(s => s.id !== signalId);
+        this.setSignals(updatedSignals);
+        this.addLog({
+          level: 'info',
+          message: `Đã xóa tín hiệu ${signal.symbol} sau khi thực thi.`,
+          type: 'signal_removed',
+        });
+        // --- END FIX 2 ---
       }
 
       return result;
