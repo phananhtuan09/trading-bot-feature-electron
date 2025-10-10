@@ -35,33 +35,31 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Event listeners
   onBackendReady: callback => {
-    ipcRenderer.on('backend-ready', callback);
+    ipcRenderer.on('backend-ready', (event) => callback());
   },
   onBotStatusUpdate: callback => {
-    ipcRenderer.on('bot:status-update', callback);
+    ipcRenderer.on('bot:status-update', (event, status) => callback(status));
   },
   onNewSignal: callback => {
-    ipcRenderer.on('signal:new', callback);
+    ipcRenderer.on('signal:new', (event, signal) => callback(signal));
   },
   onPositionUpdate: callback => {
-    ipcRenderer.on('position:update', callback);
+    ipcRenderer.on('position:update', (event, position) => callback(position));
   },
   onUpdateAvailable: callback => {
-    ipcRenderer.on('update-available', callback);
+    ipcRenderer.on('update-available', (event, info) => callback(info));
   },
   onDownloadProgress: callback => {
-    ipcRenderer.on('download-progress', callback);
+    ipcRenderer.on('download-progress', (event, progress) => callback(progress));
   },
   onUpdateDownloaded: callback => {
-    ipcRenderer.on('update-downloaded', callback);
+    ipcRenderer.on('update-downloaded', (event, info) => callback(info));
   },
-
   onNewLog: callback => {
     ipcRenderer.on('log:new', (event, log) => callback(log));
   },
-
-  onPositionUpdate: callback => {
-    ipcRenderer.on('position:update', (event, position) => callback(position));
+  onOrderNotification: callback => {
+    ipcRenderer.on('order:notification', (event, notification) => callback(notification));
   },
 
   // Remove listeners

@@ -141,10 +141,16 @@ class TradingBotApp {
 
     ipcMain.handle('data:stats', async () => {
       try {
-        // Update account data from Binance
-        await this.stateManager.updateAccountData();
-        // Calculate statistics
-        await this.stateManager.calculateStatistics();
+        // Run updates in parallel for better performance
+        await Promise.all([
+          this.stateManager.updateAccountData(),
+          this.stateManager.calculateStatistics(),
+          // Check all connections status (Binance, Discord, Telegram)
+          this.stateManager.checkAllConnections().catch(err => {
+            console.error('⚠️ Connection check failed (will show as disconnected):', err.message);
+          })
+        ]);
+        
         return this.stateManager.getStats();
       } catch (error) {
         console.error('Error getting stats:', error);
@@ -177,18 +183,14 @@ class TradingBotApp {
     // Connection status handlers
     ipcMain.handle('connection:check', async () => {
       try {
-        const binanceResult = await this.stateManager.checkBinanceConnection();
-        return {
-          binance: binanceResult,
-          discord: { connected: false, error: 'Not implemented' },
-          telegram: { connected: false, error: 'Not implemented' },
-        };
+        const results = await this.stateManager.checkAllConnections();
+        return results;
       } catch (error) {
         console.error('Error checking connections:', error);
         return {
           binance: { connected: false, error: error.message },
-          discord: { connected: false, error: 'Not implemented' },
-          telegram: { connected: false, error: 'Not implemented' },
+          discord: { connected: false, error: 'Check failed' },
+          telegram: { connected: false, error: 'Check failed' },
         };
       }
     });

@@ -8,6 +8,17 @@ class Order {
     this.stateManager = new StateManager();
     this.configManager = new ConfigManager();
     this.binanceService = new BinanceService();
+    this.mainWindow = null;
+  }
+
+  setMainWindow(window) {
+    this.mainWindow = window;
+  }
+
+  sendNotification(message, type = 'info') {
+    if (this.mainWindow) {
+      this.mainWindow.webContents.send('order:notification', { message, type });
+    }
   }
 
   // Kiểm tra xem cặp giao dịch có vị thế đang mở hay không
@@ -56,10 +67,20 @@ class Order {
         quantity,
       });
 
-      console.log(`📈 Đã mở ${side} ${symbol} | Giá vào: ${price.toFixed(4)} | SL: ${slPrice.toFixed(4)} | TP: ${tpPrice.toFixed(4)} | KL: ${quantity}`);
+      const successMsg = `✅ Đã vào lệnh ${decision.toUpperCase()} ${symbol} | Giá: ${price.toFixed(4)} | KL: ${quantity}`;
+      console.log(`📈 ${successMsg} | SL: ${slPrice.toFixed(4)} | TP: ${tpPrice.toFixed(4)}`);
+      
+      // Send success notification to UI
+      this.sendNotification(successMsg, 'success');
+      
       return true;
     } catch (error) {
-      console.error(`🔴 Lỗi đặt lệnh ${symbol}: ${error.message}`);
+      const errorMsg = `❌ Lỗi đặt lệnh ${symbol}: ${error.message}`;
+      console.error(`🔴 ${errorMsg}`);
+      
+      // Send error notification to UI
+      this.sendNotification(errorMsg, 'error');
+      
       return false;
     }
   }
@@ -208,6 +229,7 @@ class Order {
       const signals = this.stateManager.getSignals();
       if (!signals || signals.length === 0) {
         console.log('Không có tín hiệu nào để giao dịch.');
+        this.sendNotification('ℹ️ Không có tín hiệu nào để giao dịch', 'info');
         return;
       }
 
@@ -230,18 +252,42 @@ class Order {
         .sort((a, b) => b.strength - a.strength)
         .slice(0, scanOrderLimit);
 
-      // Place orders for filtered signals
+      // Place orders for filtered signals and track results
+      let successCount = 0;
+      let errorCount = 0;
+      
       for (const signal of filteredSignals) {
         console.log(`Đang thực hiện đặt lệnh cho: ${signal.symbol}`);
-        await this.placeOrder(signal);
+        const result = await this.placeOrder(signal);
+        if (result) {
+          successCount++;
+        } else {
+          errorCount++;
+        }
       }
+      
+      // Send summary notification
+      if (successCount > 0 || errorCount > 0) {
+        const summary = [];
+        if (successCount > 0) {
+          summary.push(`✅ ${successCount} lệnh thành công`);
+        }
+        if (errorCount > 0) {
+          summary.push(`❌ ${errorCount} lệnh lỗi`);
+        }
+        this.sendNotification(`📊 Kết quả đặt lệnh: ${summary.join(', ')}`, successCount > 0 ? 'success' : 'error');
+      }
+      
       // Notify if signals were skipped due to scanOrderLimit
       if (validSignals.length > scanOrderLimit) {
         const skipped = validSignals.slice(scanOrderLimit).map(s => s.symbol);
-        console.log(`⚠️ Vượt giới hạn ${scanOrderLimit} lệnh/lần, bỏ qua: ${skipped.join(', ')}`);
+        const skipMsg = `⚠️ Vượt giới hạn ${scanOrderLimit} lệnh/lần, bỏ qua: ${skipped.join(', ')}`;
+        console.log(skipMsg);
+        this.sendNotification(skipMsg, 'info');
       }
     } catch (error) {
       console.error('Error in order execution:', error);
+      this.sendNotification(`❌ Lỗi khi thực thi lệnh: ${error.message}`, 'error');
     }
   }
 

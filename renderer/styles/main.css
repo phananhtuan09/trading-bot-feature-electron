@@ -13,6 +13,12 @@ body {
   min-height: 100vh;
 }
 
+.icon {
+  width: 1em;
+  height: 1em;
+  vertical-align: -0.15em;
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;

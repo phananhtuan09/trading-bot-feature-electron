@@ -187,8 +187,8 @@ class ElectronAPI {
     window.electronAPI.onNewLog(callback);
   }
 
-  onPositionUpdate(callback) {
-    window.electronAPI.onPositionUpdate(callback);
+  onOrderNotification(callback) {
+    window.electronAPI.onOrderNotification(callback);
   }
 
   // Remove listeners

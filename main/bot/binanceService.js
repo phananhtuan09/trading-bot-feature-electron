@@ -90,25 +90,35 @@ class BinanceService {
       const positions = await this.client.futuresPositionRisk();
       const activePositions = positions.filter(pos => parseFloat(pos.positionAmt) !== 0);
 
-      return activePositions.map(position => ({
-        symbol: position.symbol,
-        side: parseFloat(position.positionAmt) > 0 ? 'LONG' : 'SHORT',
-        size: Math.abs(parseFloat(position.positionAmt)),
-        entryPrice: parseFloat(position.entryPrice),
-        markPrice: parseFloat(position.markPrice),
-        unrealizedPnl: parseFloat(position.unrealizedPnl),
-        percentage: parseFloat(position.percentage),
-        leverage: parseFloat(position.leverage),
-        marginType: position.marginType,
-        isolatedMargin: parseFloat(position.isolatedMargin),
-        isAutoAddMargin: position.isAutoAddMargin,
-        positionSide: position.positionSide,
-        notional: parseFloat(position.notional),
-        isolatedWallet: parseFloat(position.isolatedWallet),
-        updateTime: position.updateTime,
-      }));
+      console.log(`📊 Binance: Found ${activePositions.length} active positions`);
+
+      return activePositions.map(position => {
+        const posAmt = parseFloat(position.positionAmt);
+        const mappedPosition = {
+          symbol: position.symbol,
+          side: posAmt > 0 ? 'LONG' : 'SHORT',
+          positionAmt: posAmt, // Keep original for UI logic
+          size: Math.abs(posAmt),
+          entryPrice: parseFloat(position.entryPrice),
+          markPrice: parseFloat(position.markPrice),
+          unrealizedPnl: parseFloat(position.unRealizedProfit || position.unrealizedPnl || 0),
+          percentage: parseFloat(position.percentage || 0),
+          leverage: parseFloat(position.leverage),
+          marginType: position.marginType,
+          isolatedMargin: parseFloat(position.isolatedMargin),
+          isAutoAddMargin: position.isAutoAddMargin,
+          positionSide: position.positionSide,
+          notional: parseFloat(position.notional),
+          isolatedWallet: parseFloat(position.isolatedWallet),
+          updateTime: position.updateTime,
+        };
+        
+        console.log(`  - ${mappedPosition.symbol}: ${mappedPosition.side}, Price: ${mappedPosition.markPrice}, PnL: ${mappedPosition.unrealizedPnl}`);
+        
+        return mappedPosition;
+      });
     } catch (error) {
-      console.error('Failed to get positions:', error);
+      console.error('❌ Failed to get positions:', error);
       return [];
     }
   }

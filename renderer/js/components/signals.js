@@ -36,26 +36,51 @@ class Signals {
         <td>${signal.price || 'N/A'}</td>
         <td>${signal.TP_ROI || 'N/A'} / ${signal.SL_ROI || 'N/A'}</td>
         <td>${signal.confidence || 'N/A'}%</td>
-        <td><button class="btn btn-primary btn-table" onclick="signals.executeSignal('${signal.id}')">Vào</button></td>
+        <td><button class="btn btn-primary btn-table" onclick="if(window.app && window.app.signals) window.app.signals.executeSignal('${signal.id}', this)">Vào</button></td>
       `;
       tbody.appendChild(row);
     });
   }
 
-  async executeSignal(signalId) {
+  async executeSignal(signalId, buttonElement) {
+    // Disable button while processing
+    if (buttonElement) {
+      buttonElement.disabled = true;
+      buttonElement.textContent = 'Đang vào...';
+    }
+
     try {
       const result = await this.api.executeSignal(signalId);
 
       if (result.success) {
-        this.showNotification(result.message, 'success');
-        // Reload signals to update status
-        await this.loadSignals();
+        this.showNotification(result.message || '✅ Đã vào lệnh thành công! Kiểm tra tab "Vị thế" để xem.', 'success');
+        
+        // Remove the signal from table (it was executed)
+        if (buttonElement) {
+          const row = buttonElement.closest('tr');
+          if (row) {
+            row.remove();
+          }
+        }
+        
+        // No need to reload all signals - signal already removed from table
+        // Backend will remove it from store via executeSignalReal()
       } else {
         this.showNotification(`Lỗi: ${result.error}`, 'error');
+        // Re-enable button on error
+        if (buttonElement) {
+          buttonElement.disabled = false;
+          buttonElement.textContent = 'Vào';
+        }
       }
     } catch (error) {
       console.error('Lỗi khi thực thi tín hiệu:', error);
       this.showNotification(`Lỗi khi thực thi tín hiệu: ${error.message}`, 'error');
+      // Re-enable button on error
+      if (buttonElement) {
+        buttonElement.disabled = false;
+        buttonElement.textContent = 'Vào';
+      }
     }
   }
 

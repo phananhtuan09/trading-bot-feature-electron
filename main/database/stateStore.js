@@ -461,6 +461,74 @@ class StateManager {
     }
   }
 
+  async checkDiscordConnection() {
+    try {
+      // TODO: Implement Discord connection check when Discord is integrated
+      // For now, check if config exists
+      const configManager = require('./configStore');
+      const config = new configManager();
+      const discordConfig = config.getConfig().discord || {};
+      
+      const hasConfig = discordConfig.enabled && discordConfig.token && discordConfig.channelId;
+      
+      this.updateConnectionStatus('discord', {
+        connected: hasConfig,
+        lastCheck: Date.now(),
+        error: hasConfig ? null : 'Not configured',
+      });
+      
+      return { success: hasConfig, message: hasConfig ? 'Configured' : 'Not configured' };
+    } catch (error) {
+      this.updateConnectionStatus('discord', {
+        connected: false,
+        lastCheck: Date.now(),
+        error: error.message,
+      });
+      return { success: false, error: error.message };
+    }
+  }
+
+  async checkTelegramConnection() {
+    try {
+      // TODO: Implement Telegram connection check when Telegram is integrated
+      // For now, check if config exists
+      const configManager = require('./configStore');
+      const config = new configManager();
+      const telegramConfig = config.getConfig().telegram || {};
+      
+      const hasConfig = telegramConfig.enabled && telegramConfig.token && telegramConfig.chatId;
+      
+      this.updateConnectionStatus('telegram', {
+        connected: hasConfig,
+        lastCheck: Date.now(),
+        error: hasConfig ? null : 'Not configured',
+      });
+      
+      return { success: hasConfig, message: hasConfig ? 'Configured' : 'Not configured' };
+    } catch (error) {
+      this.updateConnectionStatus('telegram', {
+        connected: false,
+        lastCheck: Date.now(),
+        error: error.message,
+      });
+      return { success: false, error: error.message };
+    }
+  }
+
+  async checkAllConnections() {
+    const results = await Promise.allSettled([
+      this.checkBinanceConnection(),
+      this.checkDiscordConnection(),
+      this.checkTelegramConnection()
+    ]);
+    
+    return {
+      binance: results[0].status === 'fulfilled' ? results[0].value : { success: false, error: 'Check failed' },
+      discord: results[1].status === 'fulfilled' ? results[1].value : { success: false, error: 'Check failed' },
+      telegram: results[2].status === 'fulfilled' ? results[2].value : { success: false, error: 'Check failed' }
+    };
+  }
+
   updateConnectionStatus(service, status) {
     const currentStatus = this.store.get('connectionStatus');
     currentStatus[service] = { ...currentStatus[service], ...status };

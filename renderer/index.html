@@ -10,7 +10,7 @@
     <div class="container">
       <!-- Header -->
       <div class="header">
-        <h1>🤖 Trading Bot</h1>
+        <h1><img src="icons/cpu.svg" class="icon" /> Trading Bot</h1>
         <div class="status-badges">
           <span class="status-badge inactive" id="botStatus">Bot: Dừng</span>
           <span class="status-badge inactive" id="orderStatus">Lệnh: Không hoạt động</span>
@@ -59,9 +59,9 @@
       <!-- Tabs Container -->
       <div class="tabs-container">
         <div class="tabs">
-          <div class="tab active" onclick="switchTab('positions')">💼 Vị thế</div>
-          <div class="tab" onclick="switchTab('signals')">📡 Tín hiệu</div>
-          <div class="tab" onclick="switchTab('logs')">📋 Logs</div>
+          <div class="tab active" onclick="switchTab('positions')"><img src="icons/briefcase.svg" class="icon" /> Vị thế</div>
+          <div class="tab" onclick="switchTab('signals')"><img src="icons/wifi.svg" class="icon" /> Tín hiệu</div>
+          <div class="tab" onclick="switchTab('logs')"><img src="icons/file-text.svg" class="icon" /> Logs</div>
         </div>
 
         <!-- Tab: Open Positions -->
@@ -119,11 +119,11 @@
     <!-- Fixed Action Buttons -->
     <div class="fixed-actions">
       <div class="action-buttons">
-        <button class="btn btn-success" id="startBtn">▶️ Bắt đầu</button>
-        <button class="btn btn-danger" id="stopBtn">⏸️ Dừng</button>
-        <button class="btn btn-primary" id="startOrderBtn">📈 Bắt đầu lệnh</button>
-        <button class="btn btn-warning" id="stopOrderBtn">🛑 Dừng lệnh</button>
-        <button class="btn btn-secondary" id="settingsBtn">⚙️ Cài đặt</button>
+        <button class="btn btn-success" id="startBtn"><img src="icons/play.svg" class="icon" /> Bắt đầu</button>
+        <button class="btn btn-danger" id="stopBtn"><img src="icons/pause.svg" class="icon" /> Dừng</button>
+        <button class="btn btn-primary" id="startOrderBtn"><img src="icons/trending-up.svg" class="icon" /> Bắt đầu lệnh</button>
+        <button class="btn btn-warning" id="stopOrderBtn"><img src="icons/stop-circle.svg" class="icon" /> Dừng lệnh</button>
+        <button class="btn btn-secondary" id="settingsBtn"><img src="icons/settings.svg" class="icon" /> Cài đặt</button>
       </div>
       <div style="text-align: center; margin-top: 8px">
         <button
@@ -131,7 +131,7 @@
           id="reportBtn"
           style="width: calc(100% - 20px); max-width: 1180px"
         >
-          📋 Báo cáo
+          <img src="icons/bar-chart-2.svg" class="icon" /> Báo cáo
         </button>
       </div>
     </div>
@@ -140,17 +140,17 @@
     <div id="settingsModal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h2>⚙️ Cài đặt</h2>
-          <button class="close-modal" id="closeSettingsModal">&times;</button>
+          <h2><img src="icons/settings.svg" class="icon" /> Cài đặt</h2>
+          <button class="close-modal" id="closeSettingsModal"><img src="icons/x.svg" class="icon" /></button>
         </div>
         <div class="modal-body">
           <!-- Settings Tabs -->
           <div class="modal-tabs">
             <div class="modal-tab active" onclick="switchSettingsTab('strategy', event)">
-              📊 Chiến lược
+              <img src="icons/sliders.svg" class="icon" /> Chiến lược
             </div>
-            <div class="modal-tab" onclick="switchSettingsTab('keys', event)">🔑 API Keys</div>
-            <div class="modal-tab" onclick="switchSettingsTab('app', event)">🎛️ App Config</div>
+            <div class="modal-tab" onclick="switchSettingsTab('keys', event)"><img src="icons/key.svg" class="icon" /> API Keys</div>
+            <div class="modal-tab" onclick="switchSettingsTab('app', event)"><img src="icons/tool.svg" class="icon" /> App Config</div>
           </div>
 
           <!-- Tab: Strategy Settings -->
@@ -379,10 +379,10 @@
 
           <div style="margin-top: 20px; display: flex; gap: 10px">
             <button class="btn btn-success" style="flex: 1" id="saveSettingsBtn">
-              💾 Lưu cấu hình
+              <img src="icons/save.svg" class="icon" /> Lưu cấu hình
             </button>
             <button class="btn btn-warning" style="flex: 1" id="resetSettingsBtn">
-              🔄 Đặt lại
+              <img src="icons/refresh-cw.svg" class="icon" /> Đặt lại
             </button>
           </div>
         </div>
@@ -393,8 +393,8 @@
     <div id="reportModal" class="modal">
       <div class="modal-content" style="max-width: 600px">
         <div class="modal-header">
-          <h2>📊 Báo cáo giao dịch</h2>
-          <button class="close-modal" id="closeReportModal">&times;</button>
+          <h2><img src="icons/bar-chart-2.svg" class="icon" /> Báo cáo giao dịch</h2>
+          <button class="close-modal" id="closeReportModal"><img src="icons/x.svg" class="icon" /></button>
         </div>
         <div class="modal-body">
           <div class="report-content" id="reportContent">
@@ -407,7 +407,7 @@
     <!-- Update Notification -->
     <div id="updateNotification" class="update-notification" style="display: none">
       <div class="update-content">
-        <h3>🔄 Có bản cập nhật</h3>
+        <h3><img src="icons/refresh-cw.svg" class="icon" /> Có bản cập nhật</h3>
         <p id="updateMessage">Có phiên bản mới. Bạn có muốn tải xuống và cài đặt không?</p>
         <div class="update-actions">
           <button class="btn btn-primary" id="downloadUpdateBtn">Tải xuống</button>

@@ -42,6 +42,10 @@ class BotManager {
 
   setMainWindow(window) {
     this.mainWindow = window;
+    // Also set mainWindow for order instance if it exists
+    if (this.order) {
+      this.order.setMainWindow(window);
+    }
   }
 
   async start() {
@@ -54,7 +58,12 @@ class BotManager {
 
       // Initialize bot components
       this.scanner = new Scanner();
-      this.order = new Order(); // Scanner không còn được truyền vào nữa
+      this.order = new Order();
+      
+      // Set mainWindow for order to send notifications
+      if (this.mainWindow) {
+        this.order.setMainWindow(this.mainWindow);
+      }
 
       // Start scanning process
       await this.scanner.start();

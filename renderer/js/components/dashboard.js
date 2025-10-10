@@ -12,7 +12,7 @@ class Dashboard {
 
       // Load initial data
       await this.loadStats();
-      await this.loadPositions();
+      // Positions are now loaded by Positions.js
       await this.loadSignals();
       await this.loadLogs();
 
@@ -38,13 +38,10 @@ class Dashboard {
     }
   }
 
+  // Positions are now managed by Positions.js for real-time updates
+  // This method is kept for compatibility but does nothing
   async loadPositions() {
-    try {
-      const positions = await this.api.getPositions();
-      this.updatePositionsTable(positions);
-    } catch (error) {
-      console.error('Lỗi khi tải vị thế:', error);
-    }
+    // Positions.js handles this now
   }
 
   async loadSignals() {
@@ -126,35 +123,11 @@ class Dashboard {
     }
   }
 
+  // DEPRECATED: Positions.js handles position table updates
+  // This method is kept for backward compatibility only
+  // TODO: Remove after ensuring no external calls
   updatePositionsTable(positions) {
-    const tbody = document.getElementById('positionsTableBody');
-    if (!tbody) return;
-
-    tbody.innerHTML = '';
-
-    if (!positions || positions.length === 0) {
-      tbody.innerHTML =
-        '<tr><td colspan="6" style="text-align: center; color: #666;">Không có vị thế nào</td></tr>';
-      return;
-    }
-
-    positions.forEach(position => {
-      const row = document.createElement('tr');
-      const pnl = position.unrealizedPnl || 0;
-      const percentage = position.percentage || 0;
-
-      row.innerHTML = `
-        <td><strong>${position.symbol}</strong></td>
-        <td><span class="decision-${position.side.toLowerCase()}">${position.side}</span></td>
-        <td>${position.entryPrice ? position.entryPrice.toFixed(4) : 'N/A'}</td>
-        <td>${position.markPrice ? position.markPrice.toFixed(4) : 'N/A'}</td>
-        <td style="color: ${pnl >= 0 ? '#10b981' : '#ef4444'}; font-weight: bold;">
-          ${pnl >= 0 ? '+' : ''}${pnl.toFixed(2)} (${percentage >= 0 ? '+' : ''}${percentage.toFixed(2)}%)
-        </td>
-        <td><button class="btn btn-danger btn-table" onclick="dashboard.closePosition('${position.symbol}', '${position.side}')">Đóng</button></td>
-      `;
-      tbody.appendChild(row);
-    });
+    console.warn('⚠️ updatePositionsTable is deprecated. Use Positions component instead.');
   }
 
   updateSignalsTable(signals) {
@@ -180,7 +153,7 @@ class Dashboard {
         <td>${signal.price || 'N/A'}</td>
         <td>${signal.TP_ROI || 'N/A'} / ${signal.SL_ROI || 'N/A'}</td>
         <td>${signal.confidence || 'N/A'}%</td>
-        <td><button class="btn btn-primary btn-table" onclick="dashboard.executeSignal('${signal.id}')">Vào</button></td>
+        <td><button class="btn btn-primary btn-table" onclick="if(window.app && window.app.signals) window.app.signals.executeSignal('${signal.id}', this)">Vào</button></td>
       `;
       tbody.appendChild(row);
     });
@@ -229,11 +202,11 @@ class Dashboard {
   }
 
   setupRealTimeUpdates() {
-    // Update data every 5 seconds
+    // Update stats, signals, and logs every 5 seconds
+    // Note: Positions are now managed by Positions.js for real-time updates
     this.updateInterval = setInterval(async () => {
       if (this.isInitialized) {
         await this.loadStats();
-        await this.loadPositions();
         await this.loadSignals();
         await this.loadLogs();
       }
@@ -248,8 +221,12 @@ class Dashboard {
       this.addSignalToTable(signal);
     });
 
-    this.api.onPositionUpdate(position => {
-      this.updatePositionInTable(position);
+    // Position updates are now handled by Positions.js
+    // this.api.onPositionUpdate() is removed from here
+
+    // Listen for order notifications (success/error when placing orders)
+    this.api.onOrderNotification(notification => {
+      this.showNotification(notification.message, notification.type);
     });
 
     this.api.onUpdateAvailable(info => {
@@ -300,7 +277,7 @@ class Dashboard {
       <td>${signal.price || 'N/A'}</td>
       <td>${signal.TP_ROI || 'N/A'} / ${signal.SL_ROI || 'N/A'}</td>
       <td>${signal.confidence || 'N/A'}%</td>
-      <td><button class="btn btn-primary btn-table" onclick="dashboard.executeSignal('${signal.id}')">Vào</button></td>
+      <td><button class="btn btn-primary btn-table" onclick="if(window.app && window.app.signals) window.app.signals.executeSignal('${signal.id}', this)">Vào</button></td>
     `;
     tbody.insertBefore(row, tbody.firstChild);
 
@@ -310,31 +287,11 @@ class Dashboard {
     }
   }
 
+  // DEPRECATED: Positions.js handles position updates via WebSocket
+  // This method is kept for backward compatibility only
+  // TODO: Remove after ensuring no external calls
   updatePositionInTable(position) {
-    // Update existing position or add new one
-    const tbody = document.getElementById('positionsTableBody');
-    if (!tbody) return;
-
-    // Find existing row or create new one
-    let row = Array.from(tbody.children).find(r =>
-      r.cells[0]?.textContent.includes(position.symbol)
-    );
-
-    if (!row) {
-      row = document.createElement('tr');
-      tbody.appendChild(row);
-    }
-
-    row.innerHTML = `
-      <td><strong>${position.symbol}</strong></td>
-      <td><span class="decision-${position.side.toLowerCase()}">${position.side}</span></td>
-      <td>${position.entryPrice || 'N/A'}</td>
-      <td>${position.takeProfit || 'N/A'} / ${position.stopLoss || 'N/A'}</td>
-      <td style="color: ${position.pnl >= 0 ? '#10b981' : '#ef4444'}; font-weight: bold;">
-        ${position.pnl >= 0 ? '+' : ''}${position.pnl || 0}
-      </td>
-      <td><button class="btn btn-danger btn-table" onclick="dashboard.closePosition('${position.id}')">Đóng</button></td>
-    `;
+    console.warn('⚠️ updatePositionInTable is deprecated. Use Positions component instead.');
   }
 
   async startBot() {
@@ -378,7 +335,7 @@ class Dashboard {
       this.hideLoading('startOrderBtn');
 
       if (result.success) {
-        this.showNotification('Lệnh đã khởi động thành công', 'success');
+        this.showNotification('✅ Hệ thống đặt lệnh tự động đã được kích hoạt! Bot sẽ tự động đặt lệnh khi tìm thấy tín hiệu phù hợp.', 'success');
       } else {
         this.showNotification(`Lỗi: ${result.error}`, 'error');
       }
@@ -413,9 +370,12 @@ class Dashboard {
   }
 
   openReport() {
-    // This will be handled by the Report component
-    if (window.report) {
-      window.report.openModal();
+    // Call app's openReportModal method
+    if (window.app && window.app.openReportModal) {
+      window.app.openReportModal();
+    } else {
+      console.error('❌ Report modal not available');
+      this.showNotification('Chức năng báo cáo chưa sẵn sàng', 'error');
     }
   }
 
@@ -548,6 +508,7 @@ class Dashboard {
     this.api.removeAllListeners('bot:status-update');
     this.api.removeAllListeners('signal:new');
     this.api.removeAllListeners('position:update');
+    this.api.removeAllListeners('order:notification');
     this.api.removeAllListeners('update-available');
     this.api.removeAllListeners('update-downloaded');
   }

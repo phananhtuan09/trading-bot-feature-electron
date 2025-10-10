@@ -58,10 +58,31 @@ class App {
 
       // Setup global functions
       this.setupGlobalFunctions();
+      
+      // Setup report modal close button
+      this.setupReportModal();
 
       console.log('Trading Bot App đã khởi tạo thành công');
     } catch (error) {
       console.error('Không thể khởi tạo App:', error);
+    }
+  }
+
+  setupReportModal() {
+    // Setup close button for report modal
+    const closeBtn = document.getElementById('closeReportModal');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', () => this.closeReportModal());
+    }
+    
+    // Close modal when clicking outside
+    const modal = document.getElementById('reportModal');
+    if (modal) {
+      modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+          this.closeReportModal();
+        }
+      });
     }
   }
 
@@ -226,10 +247,18 @@ class App {
   }
 
   refreshData() {
-    this.dashboard.loadStats();
-    this.positions.loadPositions();
-    this.signals.loadSignals();
-    this.logs.loadLogs();
+    if (this.dashboard) {
+      this.dashboard.loadStats();
+    }
+    if (this.positions) {
+      this.positions.loadPositions();
+    }
+    if (this.signals) {
+      this.signals.loadSignals();
+    }
+    if (this.logs) {
+      this.logs.loadLogs();
+    }
   }
 
   exportLogs() {
