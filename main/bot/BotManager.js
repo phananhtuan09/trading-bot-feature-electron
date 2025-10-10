@@ -20,6 +20,7 @@ class BotManager {
   // Handles real-time account updates from Binance WebSocket
   handleAccountUpdate(data) {
     if (data.eventType === 'ACCOUNT_UPDATE') {
+      // Update positions
       for (const position of data.updateData.updatedPositions) {
         // Map abbreviated WebSocket property names to full names
         const positionUpdate = {
@@ -35,6 +36,14 @@ class BotManager {
 
         // Push the update to the UI
         this.emitPositionUpdate(positionUpdate);
+      }
+
+      // Update account balance (includes profit calculation)
+      // This happens real-time when account balance changes
+      if (data.updateData.balances) {
+        this.stateManager.updateAccountData().catch(err => {
+          console.error('Error updating account data from WebSocket:', err);
+        });
       }
     }
     // We could also handle 'ORDER_TRADE_UPDATE' here if needed
@@ -56,10 +65,20 @@ class BotManager {
     try {
       this.isRunning = true;
 
+      // Get current balance and set as initial capital if not already set
+      const accountState = this.stateManager.getAccountState();
+      if (!accountState.initialCapital || accountState.initialCapital === 0) {
+        const balanceData = await this.binanceService.getAccountBalance();
+        if (balanceData.success) {
+          this.stateManager.setInitialCapital(balanceData.balance);
+          console.log(`💰 Initial Capital set to: ${balanceData.balance} USDT`);
+        }
+      }
+
       // Initialize bot components
       this.scanner = new Scanner();
       this.order = new Order();
-      
+
       // Set mainWindow for order to send notifications
       if (this.mainWindow) {
         this.order.setMainWindow(this.mainWindow);

@@ -4,6 +4,17 @@
   box-sizing: border-box;
 }
 
+:root {
+  --primary-color: #4a90e2;
+  --success-color: #10b981;
+  --danger-color: #ef4444;
+  --warning-color: #f5a623;
+  --text-color: #333;
+  --text-color-light: #fff;
+  --background-color: #f0f2f5;
+  --card-background-color: #fff;
+}
+
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -17,6 +28,27 @@ body {
   width: 1em;
   height: 1em;
   vertical-align: -0.15em;
+  stroke: currentColor; /* Inherit color by default */
+}
+
+.btn-success .icon {
+  stroke: var(--text-color-light);
+}
+
+.btn-danger .icon {
+  stroke: var(--text-color-light);
+}
+
+.btn-primary .icon {
+  stroke: var(--text-color-light);
+}
+
+.btn-warning .icon {
+  stroke: var(--text-color);
+}
+
+.btn-secondary .icon {
+  stroke: var(--text-color);
 }
 
 .container {
