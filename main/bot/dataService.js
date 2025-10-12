@@ -369,6 +369,7 @@ async function analyzeMarket(symbol) {
       TP_ROI: Number(TP_ROI),
       SL_ROI: Number(SL_ROI),
       strength: result.strength,
+      confidenceScore: result.strength, // Add confidence score for UI and notifications
       reason: result.reason,
       marketType: result.marketType,
     };

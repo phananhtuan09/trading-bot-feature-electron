@@ -152,7 +152,7 @@ class Dashboard {
         <td><span class="decision-${signal.decision.toLowerCase()}">${signal.decision}</span></td>
         <td>${signal.price || 'N/A'}</td>
         <td>${signal.TP_ROI || 'N/A'} / ${signal.SL_ROI || 'N/A'}</td>
-        <td>${signal.confidence || 'N/A'}%</td>
+        <td>${signal.confidenceScore || signal.confidence || 'N/A'}%</td>
         <td><button class="btn btn-primary btn-table" onclick="if(window.app && window.app.signals) window.app.signals.executeSignal('${signal.id}', this)">Vào</button></td>
       `;
       tbody.appendChild(row);
@@ -374,7 +374,7 @@ class Dashboard {
     if (window.app && window.app.openReportModal) {
       window.app.openReportModal();
     } else {
-      console.error('❌ Report modal not available');
+      console.error('❌ Modal báo cáo không khả dụng');
       this.showNotification('Chức năng báo cáo chưa sẵn sàng', 'error');
     }
   }

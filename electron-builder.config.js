@@ -1,10 +1,9 @@
-const { app, dialog } = require('electron');
-const { autoUpdater } = require('electron-updater');
+// Electron Builder Configuration
 
 module.exports = {
   appId: 'com.tradingbot.app',
-  productName: 'Trading Bot',
-  copyright: 'Copyright © 2024 Trading Bot',
+  productName: 'Crypto Trading Bot',
+  copyright: 'Copyright © 2025 Crypto Trading Bot',
 
   // Cấu hình build
   directories: {
@@ -36,7 +35,7 @@ module.exports = {
         arch: ['x64'],
       },
     ],
-    icon: 'build/icons/icon.ico',
+    icon: 'build/icons/trading-crypto-bot.ico',
     publisherName: 'Trading Bot',
     verifyUpdateCodeSignature: false,
   },
@@ -57,7 +56,7 @@ module.exports = {
         arch: ['x64'],
       },
     ],
-    icon: 'build/icons/icon.png',
+    icon: 'build/icons/trading-crypto-bot.png',
     category: 'Office',
     synopsis: 'Crypto Trading Bot Desktop Application',
   },
@@ -66,9 +65,9 @@ module.exports = {
   nsis: {
     oneClick: false,
     allowToChangeInstallationDirectory: true,
-    installerIcon: 'build/icons/icon.ico',
-    uninstallerIcon: 'build/icons/icon.ico',
-    installerHeaderIcon: 'build/icons/icon.ico',
+    installerIcon: 'build/icons/trading-crypto-bot.ico',
+    uninstallerIcon: 'build/icons/trading-crypto-bot.ico',
+    installerHeaderIcon: 'build/icons/trading-crypto-bot.ico',
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
     shortcutName: 'Trading Bot',

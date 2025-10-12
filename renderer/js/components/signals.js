@@ -35,7 +35,7 @@ class Signals {
         <td><span class="decision-${signal.decision.toLowerCase()}">${signal.decision}</span></td>
         <td>${signal.price || 'N/A'}</td>
         <td>${signal.TP_ROI || 'N/A'} / ${signal.SL_ROI || 'N/A'}</td>
-        <td>${signal.confidence || 'N/A'}%</td>
+        <td>${signal.confidenceScore || signal.confidence || 'N/A'}%</td>
         <td><button class="btn btn-primary btn-table" onclick="if(window.app && window.app.signals) window.app.signals.executeSignal('${signal.id}', this)">Vào</button></td>
       `;
       tbody.appendChild(row);
@@ -113,7 +113,7 @@ class Signals {
 
   cleanup() {
     // Clean up any event listeners or intervals
-    console.log('Signals cleanup completed');
+    console.log('✅ Đã dọn dẹp Signals');
   }
 }
 

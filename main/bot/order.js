@@ -1,6 +1,7 @@
 const StateManager = require('../database/stateStore');
 const ConfigManager = require('../database/configStore');
 const BinanceService = require('./binanceService');
+const { sendOrderMessage } = require('./sendMessage');
 
 class Order {
   constructor() {
@@ -34,7 +35,8 @@ class Order {
 
   // Đặt lệnh giao dịch dựa trên tín hiệu
   async placeOrder(signal) {
-    const { symbol, price, decision, TP_ROI, SL_ROI } = signal;
+    const { symbol, price, decision } = signal;
+    const { sendErrorAlert } = require('./sendMessage');
 
     try {
       // Kiểm tra margin type
@@ -52,6 +54,11 @@ class Order {
       if (!orderResult.success) {
         throw new Error(orderResult.error);
       }
+
+      // Lấy TP/SL từ settings thay vì từ signal
+      const orderSettings = this.configManager.getConfig().ORDER_SETTINGS;
+      const TP_ROI = orderSettings.TAKE_PROFIT_PERCENT || 4;
+      const SL_ROI = orderSettings.STOP_LOSS_PERCENT || 2;
 
       // Đặt TP/SL
       const { tpPrice, slPrice } = await this.setTPSL(symbol, side, price, TP_ROI, SL_ROI);
@@ -73,6 +80,17 @@ class Order {
       // Send success notification to UI
       this.sendNotification(successMsg, 'success');
       
+      // Send order notification to Discord/Telegram
+      await sendOrderMessage({
+        symbol,
+        side,
+        price,
+        quantity,
+        tpPrice,
+        slPrice,
+        leverage: this.configManager.getConfig().ORDER_SETTINGS?.LEVERAGE || 20,
+      });
+      
       return true;
     } catch (error) {
       const errorMsg = `❌ Lỗi đặt lệnh ${symbol}: ${error.message}`;
@@ -80,6 +98,9 @@ class Order {
       
       // Send error notification to UI
       this.sendNotification(errorMsg, 'error');
+      
+      // Send error notification to Telegram/Discord
+      await sendErrorAlert(errorMsg);
       
       return false;
     }
@@ -170,7 +191,7 @@ class Order {
 
       return { tpPrice, slPrice };
     } catch (error) {
-      console.error(`setTPSL error for ${symbol}: ${error}`);
+      console.error(`Lỗi đặt TP/SL cho ${symbol}: ${error}`);
       throw error;
     }
   }
@@ -255,15 +276,35 @@ class Order {
       // Place orders for filtered signals and track results
       let successCount = 0;
       let errorCount = 0;
+      const successfulSignals = []; // Track successfully executed signals
       
       for (const signal of filteredSignals) {
         console.log(`Đang thực hiện đặt lệnh cho: ${signal.symbol}`);
         const result = await this.placeOrder(signal);
         if (result) {
           successCount++;
+          successfulSignals.push(signal);
         } else {
           errorCount++;
         }
+      }
+      
+      // Remove successfully executed signals from store
+      if (successfulSignals.length > 0) {
+        const currentSignals = this.stateManager.getSignals();
+        const successfulSignalIds = successfulSignals.map(s => s.id);
+        const updatedSignals = currentSignals.filter(s => !successfulSignalIds.includes(s.id));
+        this.stateManager.setSignals(updatedSignals);
+        
+        // Log removed signals
+        for (const signal of successfulSignals) {
+          this.stateManager.addLog({
+            level: 'info',
+            message: `Đã xóa tín hiệu ${signal.symbol} sau khi đặt lệnh thành công`,
+            type: 'signal_removed',
+          });
+        }
+        console.log(`🗑️ Đã xóa ${successfulSignals.length} tín hiệu sau khi đặt lệnh thành công`);
       }
       
       // Send summary notification
@@ -286,7 +327,7 @@ class Order {
         this.sendNotification(skipMsg, 'info');
       }
     } catch (error) {
-      console.error('Error in order execution:', error);
+      console.error('Lỗi trong quá trình đặt lệnh:', error);
       this.sendNotification(`❌ Lỗi khi thực thi lệnh: ${error.message}`, 'error');
     }
   }
@@ -307,11 +348,11 @@ class Order {
       // Thực thi ngay lập tức
       await this.execute();
 
-      console.log('Orders started successfully');
+      console.log('✅ Hệ thống đặt lệnh đã khởi động thành công');
       return true;
     } catch (error) {
       this.isRunning = false;
-      console.error('Failed to start orders:', error);
+      console.error('❌ Lỗi khởi động hệ thống đặt lệnh:', error);
       throw error;
     }
   }
@@ -321,7 +362,7 @@ class Order {
       return;
     }
     this.isRunning = false;
-    console.log('Orders stopped successfully');
+    console.log('✅ Hệ thống đặt lệnh đã dừng');
   }
 }
 

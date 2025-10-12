@@ -75,6 +75,8 @@ class ConfigManager {
         ORDER_SETTINGS: {
           LEVERAGE: 20,
           QUANTITY: 10,
+          TAKE_PROFIT_PERCENT: 4,
+          STOP_LOSS_PERCENT: 2,
           MAX_ORDERS_PER_DAY: 10,
           ORDER_LIMIT_PER_SCAN: 3,
         },
@@ -174,6 +176,10 @@ class ConfigManager {
 
   updateOrderSettings(orderSettings) {
     this.store.set('ORDER_SETTINGS', orderSettings);
+  }
+
+  updateTelegramConfig(telegramConfig) {
+    this.store.set('TELEGRAM', telegramConfig);
   }
 
   // Reset to defaults

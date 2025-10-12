@@ -67,7 +67,6 @@ node_modules/
 
 # Electron build output
 dist/
-build/
 
 # OS generated files
 .DS_Store

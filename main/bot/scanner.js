@@ -3,15 +3,7 @@ const { getSymbols } = require('./symbolManager');
 const { analyzeMarket } = require('./dataService');
 const StateManager = require('../database/stateStore');
 const ConfigManager = require('../database/configStore');
-
-// Mock implementations for message sending
-const sendSignalMessage = async signal => {
-  console.log(`Signal message: ${signal.symbol} ${signal.decision}`);
-};
-
-const sendMessage = async message => {
-  console.log(`Message: ${message}`);
-};
+const { sendSignalMessage, sendScanSummary } = require('./sendMessage');
 
 class Scanner {
   constructor() {
@@ -25,7 +17,7 @@ class Scanner {
 
   async start() {
     if (this.isRunning) {
-      throw new Error('Scanner is already running');
+      throw new Error('Scanner đang chạy rồi');
     }
 
     try {
@@ -38,11 +30,11 @@ class Scanner {
       // Start interval scanning
       this.startIntervalScanning();
 
-      console.log('Scanner started successfully');
+      console.log('✅ Scanner đã khởi động thành công');
       return true;
     } catch (error) {
       this.isRunning = false;
-      console.error('Failed to start scanner:', error);
+      console.error('❌ Lỗi khởi động scanner:', error);
       throw error;
     }
   }
@@ -60,10 +52,10 @@ class Scanner {
         this.scanInterval = null;
       }
 
-      console.log('Scanner stopped successfully');
+      console.log('✅ Scanner đã dừng thành công');
       return true;
     } catch (error) {
-      console.error('Failed to stop scanner:', error);
+      console.error('❌ Lỗi dừng scanner:', error);
       throw error;
     }
   }
@@ -103,6 +95,11 @@ class Scanner {
       if (allSignals.length > 0) {
         this.stateManager.setSignals(allSignals);
         console.log(`📈 Đã lưu ${allSignals.length} tín hiệu mới.`);
+        
+        // Send notification for each signal
+        for (const signal of allSignals) {
+          await sendSignalMessage(signal);
+        }
       }
 
       const summary = [
@@ -123,24 +120,26 @@ class Scanner {
         type: 'scan_summary',
       });
 
+      // Send scan summary notification
+      await sendScanSummary(summary);
+
       if (errors.length > 0) {
         console.error(`Chi tiết lỗi:`, errors);
         this.stateManager.incrementErrors();
         this.stateManager.addLog({
           level: 'error',
-          message: `Scan errors: ${errors.join(', ')}`,
+          message: `Lỗi quét: ${errors.join(', ')}`,
           type: 'scan_error',
         });
       }
 
-      await sendMessage(summary);
       return allSignals;
     } catch (error) {
       console.error(`Lỗi quét tổng:`, error);
       this.stateManager.incrementErrors();
       this.stateManager.addLog({
         level: 'error',
-        message: `Scan error: ${error.message}`,
+        message: `Lỗi quét: ${error.message}`,
         type: 'scan_error',
       });
       return null;

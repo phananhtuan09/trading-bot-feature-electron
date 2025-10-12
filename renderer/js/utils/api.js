@@ -154,6 +154,71 @@ class ElectronAPI {
     }
   }
 
+  // Notification methods
+  async reinitializeNotifications() {
+    try {
+      return await window.electronAPI.reinitializeNotifications();
+    } catch (error) {
+      console.error('Lỗi khi reinitialize notifications:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async testDiscordConnection() {
+    try {
+      return await window.electronAPI.testDiscordConnection();
+    } catch (error) {
+      console.error('Lỗi khi test Discord connection:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async testTelegramConnection() {
+    try {
+      return await window.electronAPI.invoke('notifications:test-telegram');
+    } catch (error) {
+      console.error('Lỗi khi test Telegram connection:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async testTelegramConnectionWithConfig(config) {
+    try {
+      return await window.electronAPI.invoke('notifications:test-telegram-with-config', config);
+    } catch (error) {
+      console.error('Lỗi khi test Telegram connection với config:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getTelegramChatId(token) {
+    try {
+      return await window.electronAPI.invoke('telegram:get-chat-id', token);
+    } catch (error) {
+      console.error('Lỗi khi lấy Telegram Chat ID:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  async getAppVersion() {
+    try {
+      return await window.electronAPI.invoke('app:get-version');
+    } catch (error) {
+      console.error('Lỗi khi lấy version:', error);
+      return 'v1.0.0'; // Fallback version
+    }
+  }
+
+  // Generic invoke method for any IPC channel
+  async invoke(channel, ...args) {
+    try {
+      return await window.electronAPI.invoke(channel, ...args);
+    } catch (error) {
+      console.error(`Lỗi khi invoke ${channel}:`, error);
+      throw error;
+    }
+  }
+
   // Event listeners
   onBackendReady(callback) {
     window.electronAPI.onBackendReady(callback);

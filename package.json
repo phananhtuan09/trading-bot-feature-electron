@@ -1,12 +1,12 @@
 {
-  "name": "trading-bot-electron",
+  "name": "crypto-trading-bot",
   "version": "1.0.0",
   "description": "Crypto Trading Bot Desktop App",
   "main": "main/main.js",
   "homepage": "./",
   "author": {
-    "name": "Trading Bot Team",
-    "email": "team@tradingbot.com"
+    "name": "tuanpa",
+    "email": "tuanp6905@gmail.com"
   },
   "license": "MIT",
   "scripts": {
@@ -32,9 +32,9 @@
     "fix": "npm run lint:fix && npm run format"
   },
   "dependencies": {
-    "axios": "^1.8.4",
+    "axios": "^1.12.2",
     "binance-api-node": "^0.12.9",
-    "discord.js": "^14.19.3",
+    "discord.js": "^14.23.2",
     "dotenv": "^16.4.7",
     "electron-store": "^8.1.0",
     "electron-updater": "^6.1.7",
@@ -57,7 +57,7 @@
   },
   "build": {
     "appId": "com.tradingbot.app",
-    "productName": "Trading Bot",
+    "productName": "Crypto Trading Bot",
     "directories": {
       "output": "dist",
       "buildResources": "build"
@@ -87,7 +87,7 @@
           ]
         }
       ],
-      "icon": "build/icons/icon.ico",
+      "icon": "build/icons/trading-crypto-bot.ico",
       "publisherName": "Trading Bot",
       "verifyUpdateCodeSignature": false
     },
@@ -106,7 +106,7 @@
           ]
         }
       ],
-      "icon": "build/icons/icon.png",
+      "icon": "build/icons/trading-crypto-bot.png",
       "category": "Office"
     },
     "nsis": {

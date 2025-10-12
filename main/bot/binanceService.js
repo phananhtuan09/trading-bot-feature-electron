@@ -90,10 +90,9 @@ class BinanceService {
       const positions = await this.client.futuresPositionRisk();
       const activePositions = positions.filter(pos => parseFloat(pos.positionAmt) !== 0);
 
-      console.log(`📊 Binance: Found ${activePositions.length} active positions`);
-
       return activePositions.map(position => {
         const posAmt = parseFloat(position.positionAmt);
+        
         const mappedPosition = {
           symbol: position.symbol,
           side: posAmt > 0 ? 'LONG' : 'SHORT',
@@ -112,13 +111,11 @@ class BinanceService {
           isolatedWallet: parseFloat(position.isolatedWallet),
           updateTime: position.updateTime,
         };
-        
-        console.log(`  - ${mappedPosition.symbol}: ${mappedPosition.side}, Price: ${mappedPosition.markPrice}, PnL: ${mappedPosition.unrealizedPnl}`);
-        
+                
         return mappedPosition;
       });
     } catch (error) {
-      console.error('❌ Failed to get positions:', error);
+      console.error('❌ Lỗi lấy danh sách vị thế:', error);
       return [];
     }
   }

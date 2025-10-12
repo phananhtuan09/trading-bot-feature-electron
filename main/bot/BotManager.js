@@ -3,6 +3,7 @@ const Order = require('./order');
 const StateManager = require('../database/stateStore');
 const ConfigManager = require('../database/configStore');
 const BinanceService = require('./binanceService');
+const { initialize: initNotifications } = require('./sendMessage');
 
 class BotManager {
   constructor() {
@@ -22,13 +23,18 @@ class BotManager {
     if (data.eventType === 'ACCOUNT_UPDATE') {
       // Update positions
       for (const position of data.updateData.updatedPositions) {
+        const positionAmt = parseFloat(position.pa);
+        const markPrice = parseFloat(position.mp);
+        
         // Map abbreviated WebSocket property names to full names
         const positionUpdate = {
           symbol: position.s,
-          positionAmt: parseFloat(position.pa),
+          positionAmt: positionAmt,
           unrealizedPnl: parseFloat(position.up),
           entryPrice: parseFloat(position.ep),
-          markPrice: parseFloat(position.mp),
+          markPrice: markPrice,
+          // Calculate notional value (position value in USDT) for accurate PNL percentage
+          notional: Math.abs(positionAmt) * markPrice,
         };
 
         // Update the state store silently
@@ -42,7 +48,7 @@ class BotManager {
       // This happens real-time when account balance changes
       if (data.updateData.balances) {
         this.stateManager.updateAccountData().catch(err => {
-          console.error('Error updating account data from WebSocket:', err);
+          console.error('Lỗi cập nhật dữ liệu tài khoản từ WebSocket:', err);
         });
       }
     }
@@ -59,11 +65,14 @@ class BotManager {
 
   async start() {
     if (this.isRunning) {
-      throw new Error('Bot is already running');
+      throw new Error('Bot đang chạy rồi');
     }
 
     try {
       this.isRunning = true;
+
+      // Initialize notification services
+      await initNotifications();
 
       // Get current balance and set as initial capital if not already set
       const accountState = this.stateManager.getAccountState();
@@ -95,11 +104,11 @@ class BotManager {
       // Emit status update
       this.emitStatusUpdate();
 
-      console.log('Bot started successfully');
+      console.log('✅ Bot đã khởi động thành công');
       return true;
     } catch (error) {
       this.isRunning = false;
-      console.error('Failed to start bot:', error);
+      console.error('❌ Lỗi khởi động bot:', error);
       throw error;
     }
   }
@@ -133,21 +142,21 @@ class BotManager {
       // Emit status update
       this.emitStatusUpdate();
 
-      console.log('Bot stopped successfully');
+      console.log('✅ Bot đã dừng thành công');
       return true;
     } catch (error) {
-      console.error('Failed to stop bot:', error);
+      console.error('❌ Lỗi dừng bot:', error);
       throw error;
     }
   }
 
   async startOrders() {
     if (!this.isRunning) {
-      throw new Error('Bot must be running before starting orders');
+      throw new Error('Bot phải chạy trước khi bắt đầu đặt lệnh');
     }
 
     if (this.isOrderActive) {
-      throw new Error('Orders are already active');
+      throw new Error('Lệnh đang hoạt động rồi');
     }
 
     try {
@@ -160,11 +169,11 @@ class BotManager {
       // Emit status update
       this.emitStatusUpdate();
 
-      console.log('Orders started successfully');
+      console.log('✅ Đã bắt đầu đặt lệnh thành công');
       return true;
     } catch (error) {
       this.isOrderActive = false;
-      console.error('Failed to start orders:', error);
+      console.error('❌ Lỗi bắt đầu đặt lệnh:', error);
       throw error;
     }
   }
@@ -184,10 +193,10 @@ class BotManager {
       // Emit status update
       this.emitStatusUpdate();
 
-      console.log('Orders stopped successfully');
+      console.log('✅ Đã dừng đặt lệnh thành công');
       return true;
     } catch (error) {
-      console.error('Failed to stop orders:', error);
+      console.error('❌ Lỗi dừng đặt lệnh:', error);
       throw error;
     }
   }

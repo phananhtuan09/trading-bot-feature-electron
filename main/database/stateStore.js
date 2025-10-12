@@ -1,5 +1,6 @@
 const Store = require('electron-store');
 const BinanceService = require('../bot/binanceService');
+const { sendPositionClosedMessage } = require('../bot/sendMessage');
 
 class StateManager {
   constructor() {
@@ -361,6 +362,13 @@ class StateManager {
           message: `Đã đóng vị thế ${symbol} thành công`,
           type: 'position_closed',
         });
+
+        // Send position closed notification
+        await sendPositionClosedMessage({
+          symbol,
+          side,
+          pnl: result.pnl || 0,
+        });
       }
       return result;
     } catch (error) {
@@ -370,6 +378,8 @@ class StateManager {
   }
 
   async executeSignalReal(signalId) {
+    const { sendOrderMessage } = require('../bot/sendMessage');
+    
     try {
       const signals = this.getSignals();
       const signal = signals.find(s => s.id === signalId);
@@ -378,8 +388,38 @@ class StateManager {
         throw new Error('Không tìm thấy tín hiệu');
       }
 
-      // --- FIX 1: Calculate correct quantity ---
+      // Get latest order settings from config
       const orderSettings = this.getOrdersState();
+      const configManager = require('./configStore');
+      const config = new configManager().getConfig();
+      const takeProfitPercent = config.ORDER_SETTINGS?.TAKE_PROFIT_PERCENT || 4;
+      const stopLossPercent = config.ORDER_SETTINGS?.STOP_LOSS_PERCENT || 2;
+
+      // --- STEP 1: Set margin type to ISOLATED ---
+      try {
+        await this.binanceService.client.futuresMarginType({ 
+          symbol: signal.symbol, 
+          marginType: 'ISOLATED' 
+        });
+      } catch (error) {
+        // Ignore if already set to ISOLATED
+        if (!error.message.includes('No need')) {
+          console.error(`⚠️ Failed to set margin type for ${signal.symbol}:`, error.message);
+        }
+      }
+
+      // --- STEP 2: Set leverage ---
+      const leverage = orderSettings.leverage || 20;
+      try {
+        await this.binanceService.client.futuresLeverage({
+          symbol: signal.symbol,
+          leverage: leverage,
+        });
+      } catch (error) {
+        console.error(`⚠️ Failed to set leverage for ${signal.symbol}:`, error.message);
+      }
+
+      // --- STEP 3: Calculate correct quantity ---
       const exchangeInfo = await this.binanceService.client.futuresExchangeInfo();
       const symbolInfo = exchangeInfo.symbols.find(s => s.symbol === signal.symbol);
       if (!symbolInfo) {
@@ -387,9 +427,10 @@ class StateManager {
       }
       const lotSizeFilter = symbolInfo.filters.find(f => f.filterType === 'LOT_SIZE');
       const stepSize = parseFloat(lotSizeFilter.stepSize);
+      const priceFilter = symbolInfo.filters.find(f => f.filterType === 'PRICE_FILTER');
+      const tickSize = parseFloat(priceFilter.tickSize);
 
       const quantityPerOrder = orderSettings.quantity || 10;
-      const leverage = orderSettings.leverage || 20;
       const price = signal.price;
 
       const rawQty = (quantityPerOrder * leverage) / price;
@@ -398,45 +439,121 @@ class StateManager {
       if (finalQuantity <= 0) {
         throw new Error('Số lượng tính toán không hợp lệ (quá nhỏ).');
       }
-      // --- END FIX 1 ---
 
+      // --- STEP 4: Place market order ---
       const orderData = {
         symbol: signal.symbol,
         side: signal.decision === 'Long' ? 'BUY' : 'SELL',
         type: 'MARKET',
-        quantity: finalQuantity, // Use calculated quantity
+        quantity: finalQuantity,
       };
 
       const result = await this.binanceService.placeOrder(orderData);
 
-      if (result.success) {
-        // Update orders count
-        this.incrementDailyOrders();
-
-        // Update positions and account data
-        await this.updatePositionsData();
-        await this.updateAccountData();
-
-        this.addLog({
-          level: 'info',
-          message: `Đã thực thi tín hiệu ${signal.symbol}: ${signal.decision}`,
-          type: 'signal_executed',
-        });
-
-        // --- FIX 2: Remove executed signal ---
-        const updatedSignals = this.getSignals().filter(s => s.id !== signalId);
-        this.setSignals(updatedSignals);
-        this.addLog({
-          level: 'info',
-          message: `Đã xóa tín hiệu ${signal.symbol} sau khi thực thi.`,
-          type: 'signal_removed',
-        });
-        // --- END FIX 2 ---
+      if (!result.success) {
+        // Send failure notification to Telegram/Discord
+        const errorMsg = `❌ Lỗi đặt lệnh ${signal.symbol}: ${result.error}`;
+        const { sendErrorAlert } = require('../bot/sendMessage');
+        await sendErrorAlert(errorMsg);
+        
+        return result;
       }
 
-      return result;
+      // --- STEP 5: Calculate and place TP/SL orders ---
+      const side = orderData.side;
+      const tpChange = takeProfitPercent / leverage / 100;
+      const slChange = stopLossPercent / leverage / 100;
+
+      let tpPrice, slPrice;
+      if (side === 'BUY') {
+        tpPrice = price * (1 + tpChange);
+        slPrice = price * (1 - slChange);
+      } else {
+        tpPrice = price * (1 - tpChange);
+        slPrice = price * (1 + slChange);
+      }
+
+      // Round prices to tickSize
+      const roundToTickSize = (priceValue, tickSizeValue) => {
+        const precision = -Math.floor(Math.log10(tickSizeValue));
+        return Number(priceValue.toFixed(precision));
+      };
+
+      tpPrice = roundToTickSize(tpPrice, tickSize);
+      slPrice = roundToTickSize(slPrice, tickSize);
+
+      // Place TP order
+      try {
+        await this.binanceService.client.futuresOrder({
+          symbol: signal.symbol,
+          side: side === 'BUY' ? 'SELL' : 'BUY',
+          type: 'TAKE_PROFIT_MARKET',
+          stopPrice: tpPrice,
+          closePosition: true,
+        });
+      } catch (error) {
+        console.error(`⚠️ Failed to place TP order for ${signal.symbol}:`, error.message);
+      }
+
+      // Place SL order
+      try {
+        await this.binanceService.client.futuresOrder({
+          symbol: signal.symbol,
+          side: side === 'BUY' ? 'SELL' : 'BUY',
+          type: 'STOP_MARKET',
+          stopPrice: slPrice,
+          closePosition: true,
+        });
+      } catch (error) {
+        console.error(`⚠️ Failed to place SL order for ${signal.symbol}:`, error.message);
+      }
+
+      // --- STEP 6: Update state and send notifications ---
+      // Update orders count
+      this.incrementDailyOrders();
+
+      // Update positions and account data
+      await this.updatePositionsData();
+      await this.updateAccountData();
+
+      this.addLog({
+        level: 'info',
+        message: `✅ Đã vào lệnh ${signal.decision.toUpperCase()} ${signal.symbol} | Giá: ${price.toFixed(4)} | KL: ${finalQuantity} | SL: ${slPrice.toFixed(4)} | TP: ${tpPrice.toFixed(4)}`,
+        type: 'signal_executed',
+      });
+
+      // Send success notification to Telegram/Discord
+      await sendOrderMessage({
+        symbol: signal.symbol,
+        side: side,
+        price: price,
+        quantity: finalQuantity,
+        tpPrice: tpPrice,
+        slPrice: slPrice,
+        leverage: leverage,
+      });
+
+      // Remove executed signal
+      const updatedSignals = this.getSignals().filter(s => s.id !== signalId);
+      this.setSignals(updatedSignals);
+      this.addLog({
+        level: 'info',
+        message: `Đã xóa tín hiệu ${signal.symbol} sau khi thực thi.`,
+        type: 'signal_removed',
+      });
+
+      return { 
+        success: true, 
+        message: `✅ Đã vào lệnh ${signal.decision.toUpperCase()} ${signal.symbol} thành công`
+      };
     } catch (error) {
       console.error(`Failed to execute signal ${signalId}:`, error);
+      
+      // Send error notification to Telegram/Discord
+      const { sendErrorAlert } = require('../bot/sendMessage');
+      const errorMsg = `❌ Lỗi đặt lệnh (từ tín hiệu): ${error.message}`;
+      await sendErrorAlert(errorMsg);
+      
       return { success: false, error: error.message };
     }
   }
@@ -601,7 +718,9 @@ class StateManager {
 
   calculateSharpeRatio(positions) {
     // Simplified Sharpe ratio calculation
-    if (positions.length < 2) return 0;
+    if (positions.length < 2) {
+      return 0;
+    }
 
     const returns = positions.map(p => p.unrealizedPnl);
     const mean = returns.reduce((sum, r) => sum + r, 0) / returns.length;

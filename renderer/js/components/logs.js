@@ -77,7 +77,7 @@ class Logs {
 
   cleanup() {
     // Clean up any event listeners or intervals
-    console.log('Logs cleanup completed');
+    console.log('✅ Đã dọn dẹp Logs');
   }
 }
 

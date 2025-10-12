@@ -62,6 +62,9 @@ class App {
       // Setup report modal close button
       this.setupReportModal();
 
+      // Load app version
+      await this.loadAppVersion();
+
       console.log('Trading Bot App đã khởi tạo thành công');
     } catch (error) {
       console.error('Không thể khởi tạo App:', error);
@@ -86,6 +89,24 @@ class App {
     }
   }
 
+  async loadAppVersion() {
+    try {
+      const version = await this.api.getAppVersion();
+      const versionElement = document.getElementById('appVersion');
+      if (versionElement) {
+        versionElement.textContent = `v${version}`;
+      }
+      console.log(`App version: v${version}`);
+    } catch (error) {
+      console.error('Không thể load app version:', error);
+      // Fallback to default version
+      const versionElement = document.getElementById('appVersion');
+      if (versionElement) {
+        versionElement.textContent = 'v1.0.0';
+      }
+    }
+  }
+
   setupTabSwitching() {
     // Tab switching function
     window.switchTab = tabName => {
@@ -98,7 +119,10 @@ class App {
       });
 
       // Add active class to selected tab and content
-      event.target.classList.add('active');
+      const activeTab = document.querySelector(`[onclick="switchTab('${tabName}')"]`);
+      if (activeTab) {
+        activeTab.classList.add('active');
+      }
       document.getElementById(tabName).classList.add('active');
 
       // Load data for the active tab
@@ -161,7 +185,9 @@ class App {
 
   updateReportContent(stats) {
     const content = document.getElementById('reportContent');
-    if (!content || !stats) return;
+    if (!content || !stats) {
+      return;
+    }
 
     const reportData = [
       {

@@ -33,6 +33,17 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkForUpdates: () => ipcRenderer.invoke('update:check'),
   installUpdate: () => ipcRenderer.invoke('update:install'),
 
+  // Notification methods
+  reinitializeNotifications: () => ipcRenderer.invoke('notifications:reinitialize'),
+  testDiscordConnection: () => ipcRenderer.invoke('notifications:test-discord'),
+  testTelegramConnection: () => ipcRenderer.invoke('notifications:test-telegram'),
+
+  // App methods
+  getAppVersion: () => ipcRenderer.invoke('app:get-version'),
+
+  // Generic invoke method for any IPC channel
+  invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
+
   // Event listeners
   onBackendReady: callback => {
     ipcRenderer.on('backend-ready', (event) => callback());

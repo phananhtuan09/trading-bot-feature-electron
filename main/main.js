@@ -28,7 +28,7 @@ class TradingBotApp {
         contextIsolation: true,
         preload: path.join(__dirname, 'preload.js'),
       },
-      icon: path.join(__dirname, 'build/icons/icon.png'),
+      icon: path.join(__dirname, 'build/icons/trading-crypto-bot.ico'),
       titleBarStyle: 'default',
       show: true, // Show immediately on Linux
       center: true,
@@ -68,7 +68,7 @@ class TradingBotApp {
     ipcMain.handle('bot:start', async () => {
       try {
         await this.botManager.start();
-        return { success: true, message: 'Bot started successfully' };
+        return { success: true, message: 'Bot đã khởi động thành công' };
       } catch (error) {
         return { success: false, error: error.message };
       }
@@ -77,7 +77,7 @@ class TradingBotApp {
     ipcMain.handle('bot:stop', async () => {
       try {
         await this.botManager.stop();
-        return { success: true, message: 'Bot stopped successfully' };
+        return { success: true, message: 'Bot đã dừng thành công' };
       } catch (error) {
         return { success: false, error: error.message };
       }
@@ -86,7 +86,7 @@ class TradingBotApp {
     ipcMain.handle('bot:startOrders', async () => {
       try {
         await this.botManager.startOrders();
-        return { success: true, message: 'Orders started successfully' };
+        return { success: true, message: 'Đã bắt đầu đặt lệnh thành công' };
       } catch (error) {
         return { success: false, error: error.message };
       }
@@ -95,7 +95,7 @@ class TradingBotApp {
     ipcMain.handle('bot:stopOrders', async () => {
       try {
         await this.botManager.stopOrders();
-        return { success: true, message: 'Orders stopped successfully' };
+        return { success: true, message: 'Đã dừng đặt lệnh thành công' };
       } catch (error) {
         return { success: false, error: error.message };
       }
@@ -126,7 +126,7 @@ class TradingBotApp {
         await this.stateManager.updatePositionsData();
         return this.stateManager.getPositions();
       } catch (error) {
-        console.error('Error getting positions:', error);
+        console.error('Lỗi lấy danh sách vị thế:', error);
         return [];
       }
     });
@@ -147,13 +147,13 @@ class TradingBotApp {
           this.stateManager.calculateStatistics(),
           // Check all connections status (Binance, Discord, Telegram)
           this.stateManager.checkAllConnections().catch(err => {
-            console.error('⚠️ Connection check failed (will show as disconnected):', err.message);
+            console.error('⚠️ Kiểm tra kết nối thất bại (sẽ hiển thị là ngắt kết nối):', err.message);
           })
         ]);
         
         return this.stateManager.getStats();
       } catch (error) {
-        console.error('Error getting stats:', error);
+        console.error('Lỗi lấy thống kê:', error);
         return this.stateManager.getStats();
       }
     });
@@ -164,7 +164,7 @@ class TradingBotApp {
         const result = await this.stateManager.closePositionReal(symbol, side);
         return result;
       } catch (error) {
-        console.error('Error closing position:', error);
+        console.error('Lỗi đóng vị thế:', error);
         return { success: false, error: error.message };
       }
     });
@@ -175,7 +175,7 @@ class TradingBotApp {
         const result = await this.stateManager.executeSignalReal(signalId);
         return result;
       } catch (error) {
-        console.error('Error executing signal:', error);
+        console.error('Lỗi thực thi tín hiệu:', error);
         return { success: false, error: error.message };
       }
     });
@@ -186,11 +186,11 @@ class TradingBotApp {
         const results = await this.stateManager.checkAllConnections();
         return results;
       } catch (error) {
-        console.error('Error checking connections:', error);
+        console.error('Lỗi kiểm tra kết nối:', error);
         return {
           binance: { connected: false, error: error.message },
-          discord: { connected: false, error: 'Check failed' },
-          telegram: { connected: false, error: 'Check failed' },
+          discord: { connected: false, error: 'Kiểm tra thất bại' },
+          telegram: { connected: false, error: 'Kiểm tra thất bại' },
         };
       }
     });
@@ -204,6 +204,120 @@ class TradingBotApp {
       autoUpdater.quitAndInstall();
     });
 
+    // Notification handlers
+    ipcMain.handle('notifications:reinitialize', async () => {
+      try {
+        const { reinitialize } = require('./bot/sendMessage');
+        const result = await reinitialize();
+        return { success: result };
+      } catch (error) {
+        console.error('Lỗi khởi tạo lại thông báo:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('notifications:test-discord', async () => {
+      try {
+        const { testConnections } = require('./bot/sendMessage');
+        const results = await testConnections();
+        return results.discord;
+      } catch (error) {
+        console.error('Lỗi kiểm tra Discord:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('notifications:test-telegram', async () => {
+      try {
+        const { reinitialize, testConnections } = require('./bot/sendMessage');
+        
+        // Reinitialize với config mới nhất trước khi test
+        console.log('🔄 Reinitializing notification services...');
+        await reinitialize();
+        
+        const results = await testConnections();
+        return results.telegram;
+      } catch (error) {
+        console.error('Lỗi kiểm tra Telegram:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('notifications:test-telegram-with-config', async (event, config) => {
+      try {
+        const { testConnections } = require('./bot/sendMessage');
+        
+        // Test với config được truyền vào (không cần reinitialize)
+        console.log('🔄 Testing Telegram với config từ UI...');
+        const results = await testConnections(config);
+        return results.telegram;
+      } catch (error) {
+        console.error('Lỗi kiểm tra Telegram với config:', error);
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('app:get-version', async () => {
+      try {
+        const packageJson = require('../package.json');
+        return packageJson.version;
+      } catch (error) {
+        console.error('Lỗi khi lấy version:', error);
+        return '1.0.0';
+      }
+    });
+
+    ipcMain.handle('telegram:get-chat-id', async (event, token) => {
+      try {
+        const axios = require('axios');
+        
+        // Bước 1: Verify bot token
+        const meResponse = await axios.get(`https://api.telegram.org/bot${token}/getMe`);
+        if (!meResponse.data.ok) {
+          return { success: false, error: 'Bot token không hợp lệ' };
+        }
+
+        // Bước 2: Lấy updates để tìm chat ID
+        const updatesResponse = await axios.get(`https://api.telegram.org/bot${token}/getUpdates`);
+        
+        if (!updatesResponse.data.ok) {
+          return { success: false, error: 'Không thể lấy updates từ Telegram' };
+        }
+
+        const updates = updatesResponse.data.result;
+        
+        if (updates.length === 0) {
+          return { 
+            success: false, 
+            error: 'Chưa có tin nhắn nào. Vui lòng gửi "/start" cho bot và thử lại' 
+          };
+        }
+
+        // Lấy chat ID từ tin nhắn gần nhất
+        const lastUpdate = updates[updates.length - 1];
+        const chatId = lastUpdate.message?.chat?.id || lastUpdate.my_chat_member?.chat?.id;
+
+        if (!chatId) {
+          return { 
+            success: false, 
+            error: 'Không tìm thấy Chat ID. Vui lòng gửi tin nhắn cho bot và thử lại' 
+          };
+        }
+
+        return { 
+          success: true, 
+          chatId: chatId.toString(),
+          botInfo: meResponse.data.result 
+        };
+      } catch (error) {
+        console.error('Lỗi lấy Telegram Chat ID:', error);
+        return { 
+          success: false, 
+          error: error.response?.data?.description || error.message 
+        };
+      }
+    });
+
     // Signal to renderer that backend is ready
     this.mainWindow.webContents.send('backend-ready');
   }
@@ -214,22 +328,22 @@ class TradingBotApp {
       autoUpdater.checkForUpdatesAndNotify();
 
       autoUpdater.on('checking-for-update', () => {
-        console.log('Checking for update...');
+        console.log('Đang kiểm tra cập nhật...');
       });
 
       autoUpdater.on('update-available', info => {
-        console.log('Update available:', info);
+        console.log('Có bản cập nhật:', info);
         if (this.mainWindow) {
           this.mainWindow.webContents.send('update-available', info);
         }
       });
 
       autoUpdater.on('update-not-available', info => {
-        console.log('Update not available:', info);
+        console.log('Không có bản cập nhật mới:', info);
       });
 
       autoUpdater.on('error', err => {
-        console.log('Error in auto-updater:', err);
+        console.log('Lỗi trong quá trình cập nhật:', err);
       });
 
       autoUpdater.on('download-progress', progressObj => {
@@ -257,10 +371,10 @@ class TradingBotApp {
       // Create window
       await this.createWindow();
 
-      console.log('Trading Bot App initialized successfully');
+      console.log('✅ Trading Bot đã khởi tạo thành công');
     } catch (error) {
-      console.error('Failed to initialize app:', error);
-      dialog.showErrorBox('Initialization Error', error.message);
+      console.error('❌ Lỗi khởi tạo ứng dụng:', error);
+      dialog.showErrorBox('Lỗi khởi tạo', error.message);
     }
   }
 }
@@ -287,7 +401,7 @@ app.on('activate', () => {
 
 // Security: Prevent new window creation
 app.on('web-contents-created', (event, contents) => {
-  contents.on('new-window', (event, navigationUrl) => {
-    event.preventDefault();
+  contents.on('new-window', (newEvent, _navigationUrl) => {
+    newEvent.preventDefault();
   });
 });

@@ -71,7 +71,7 @@ class Positions {
         }
       }
     } catch (error) {
-      console.error('❌ Error refreshing positions:', error);
+      console.error('❌ Lỗi làm mới danh sách vị thế:', error);
     }
   }
 
@@ -117,10 +117,22 @@ class Positions {
       side = parseFloat(position.positionAmt) > 0 ? 'LONG' : 'SHORT';
     }
     
-    // Calculate percentage based on entry price and size if not provided
-    const size = Math.abs(position.positionAmt || position.size || 0);
-    const entryPrice = parseFloat(position.entryPrice) || 0;
-    const pnlPercentage = entryPrice > 0 ? (pnl / (size * entryPrice) * 100) : 0;
+    // Calculate percentage based on margin (for isolated) or notional (for cross)
+    // For isolated margin: PNL% = unrealizedPnl / isolatedWallet * 100 (như Binance)
+    // For cross margin: PNL% = unrealizedPnl / (notional / leverage) * 100
+    let pnlPercentage = 0;
+    
+    if (position.marginType === 'isolated' && position.isolatedWallet) {
+      // Isolated margin: tính % dựa trên margin wallet
+      const isolatedWallet = Math.abs(parseFloat(position.isolatedWallet) || 0);
+      pnlPercentage = isolatedWallet > 0 ? (pnl / isolatedWallet * 100) : 0;
+    } else {
+      // Cross margin hoặc không có isolatedWallet: tính % dựa trên margin
+      const notional = Math.abs(position.notional || 0);
+      const leverage = parseFloat(position.leverage) || 1;
+      const margin = notional / leverage;
+      pnlPercentage = margin > 0 ? (pnl / margin * 100) : 0;
+    }
 
     row.innerHTML = `
       <td><strong>${position.symbol}</strong></td>
@@ -141,15 +153,7 @@ class Positions {
       return;
     }
 
-    console.log('📊 Position update:', {
-      symbol: position.symbol,
-      markPrice: position.markPrice,
-      unrealizedPnl: position.unrealizedPnl,
-      positionAmt: position.positionAmt
-    });
-
     const row = this.tbody.querySelector(`tr[data-symbol="${position.symbol}"]`);
-    console.log('🔍 Found existing row:', row ? 'YES' : 'NO');
 
     // If position amount is 0 or close to 0, remove it
     const posAmt = parseFloat(position.positionAmt || position.size || 0);
@@ -173,8 +177,21 @@ class Positions {
 
       const pnl = parseFloat(position.unrealizedPnl) || 0;
       const entryPrice = parseFloat(position.entryPrice) || parseFloat(entryPriceCell?.textContent) || 0;
-      const size = Math.abs(parseFloat(position.positionAmt) || 0);
-      const pnlPercentage = entryPrice > 0 && size > 0 ? (pnl / (size * entryPrice) * 100) : 0;
+      
+      // Calculate PNL percentage based on margin type
+      let pnlPercentage = 0;
+      
+      if (position.marginType === 'isolated' && position.isolatedWallet) {
+        // Isolated margin: tính % dựa trên margin wallet
+        const isolatedWallet = Math.abs(parseFloat(position.isolatedWallet) || 0);
+        pnlPercentage = isolatedWallet > 0 ? (pnl / isolatedWallet * 100) : 0;
+      } else {
+        // Cross margin: tính % dựa trên margin
+        const notional = Math.abs(parseFloat(position.notional) || 0);
+        const leverage = parseFloat(position.leverage) || 1;
+        const margin = notional / leverage;
+        pnlPercentage = margin > 0 ? (pnl / margin * 100) : 0;
+      }
 
       // Update entry price if provided
       if (entryPriceCell && position.entryPrice) {
@@ -185,7 +202,6 @@ class Positions {
       if (markPriceCell && position.markPrice) {
         const newPrice = parseFloat(position.markPrice).toFixed(4);
         markPriceCell.textContent = newPrice;
-        console.log('✅ Updated markPrice:', newPrice);
       }
 
       // Update PnL
@@ -281,7 +297,7 @@ class Positions {
       this.updateInterval = null;
       console.log('✅ Positions: Stopped periodic updates');
     }
-    console.log('Positions cleanup completed');
+    console.log('✅ Đã dọn dẹp Positions');
   }
 }
 

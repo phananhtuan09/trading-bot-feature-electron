@@ -80,6 +80,8 @@ class Settings {
     // Order settings
     this.setValue('leverage', config.ORDER_SETTINGS?.LEVERAGE || 20);
     this.setValue('quantity', config.ORDER_SETTINGS?.QUANTITY || 10);
+    this.setValue('takeProfitPercent', config.ORDER_SETTINGS?.TAKE_PROFIT_PERCENT || 4);
+    this.setValue('stopLossPercent', config.ORDER_SETTINGS?.STOP_LOSS_PERCENT || 2);
     this.setValue('maxOrdersPerDay', config.ORDER_SETTINGS?.MAX_ORDERS_PER_DAY || 10);
     this.setValue('orderLimitPerScan', config.ORDER_SETTINGS?.ORDER_LIMIT_PER_SCAN || 3);
 
@@ -115,6 +117,17 @@ class Settings {
     document
       .getElementById('resetSettingsBtn')
       ?.addEventListener('click', () => this.resetSettings());
+
+    // Test connection buttons
+    document
+      .getElementById('testDiscord')
+      ?.addEventListener('click', () => this.testDiscordConnection());
+    document
+      .getElementById('testTelegram')
+      ?.addEventListener('click', () => this.testTelegramConnection());
+    document
+      .getElementById('getTelegramChatId')
+      ?.addEventListener('click', () => this.getTelegramChatId());
 
     // Close modal when clicking outside
     document.getElementById('settingsModal')?.addEventListener('click', e => {
@@ -159,6 +172,10 @@ class Settings {
       if (result.success) {
         this.showNotification('Cài đặt đã lưu thành công', 'success');
         this.currentConfig = config;
+        
+        // Reinitialize notification services with new config
+        await this.api.reinitializeNotifications();
+        
         this.closeModal();
       } else {
         this.showNotification(`Lỗi: ${result.error}`, 'error');
@@ -169,40 +186,121 @@ class Settings {
     }
   }
 
+  async testDiscordConnection() {
+    try {
+      this.showLoading('testDiscord');
+      this.showNotification('Đang test Discord connection...', 'info');
+      
+      const result = await this.api.testDiscordConnection();
+      
+      this.hideLoading('testDiscord');
+      
+      if (result.success) {
+        this.showNotification('✅ Discord connection thành công!', 'success');
+      } else {
+        this.showNotification(`❌ Kiểm tra Discord thất bại: ${result.error || result.message}`, 'error');
+      }
+    } catch (error) {
+      this.hideLoading('testDiscord');
+      this.showNotification(`❌ Lỗi test Discord: ${error.message}`, 'error');
+    }
+  }
+
+  async testTelegramConnection() {
+    try {
+      this.showLoading('testTelegram');
+      this.showNotification('Đang test Telegram connection...', 'info');
+      
+      // Lấy config hiện tại từ UI (bao gồm Chat ID vừa lấy)
+      const currentConfig = this.collectFormData();
+      
+      // Test với config hiện tại thay vì config đã lưu
+      const result = await this.api.testTelegramConnectionWithConfig(currentConfig);
+      
+      this.hideLoading('testTelegram');
+      
+      if (result.success) {
+        this.showNotification('✅ Telegram connection thành công!', 'success');
+      } else {
+        this.showNotification(`❌ Kiểm tra Telegram thất bại: ${result.error || result.message}`, 'error');
+      }
+    } catch (error) {
+      this.hideLoading('testTelegram');
+      this.showNotification(`❌ Lỗi test Telegram: ${error.message}`, 'error');
+    }
+  }
+
+  async getTelegramChatId() {
+    try {
+      const tokenInput = document.getElementById('telegramToken');
+      const chatIdInput = document.getElementById('telegramChatId');
+      
+      if (!tokenInput || !chatIdInput) {
+        this.showNotification('❌ Không tìm thấy input fields', 'error');
+        return;
+      }
+
+      const token = tokenInput.value.trim();
+      
+      if (!token) {
+        this.showNotification('⚠️ Vui lòng nhập Bot Token trước', 'error');
+        return;
+      }
+
+      this.showLoading('getTelegramChatId');
+      this.showNotification('🔍 Đang lấy Chat ID...', 'info');
+      
+      const result = await this.api.getTelegramChatId(token);
+      
+      this.hideLoading('getTelegramChatId');
+      
+      if (result.success) {
+        // Tự động điền chat ID vào input
+        chatIdInput.value = result.chatId;
+        this.showNotification(`✅ Đã lấy Chat ID thành công: ${result.chatId}`, 'success');
+      } else {
+        this.showNotification(`❌ ${result.error || 'Không thể lấy Chat ID'}`, 'error');
+      }
+    } catch (error) {
+      this.hideLoading('getTelegramChatId');
+      this.showNotification(`❌ Lỗi: ${error.message}`, 'error');
+    }
+  }
+
   collectFormData() {
     return {
       STRATEGY_CONFIG: {
         INTERVAL: this.getValue('interval'),
         QUOTE_ASSET: this.getValue('quoteAsset'),
-        MAX_SYMBOLS: parseInt(this.getValue('maxSymbols')),
-        CONCURRENCY_LIMIT: parseInt(this.getValue('concurrencyLimit')),
-        MAX_CANDLES_HOLD: parseInt(this.getValue('maxCandlesHold')),
+        MAX_SYMBOLS: parseInt(this.getValue('maxSymbols'), 10),
+        CONCURRENCY_LIMIT: parseInt(this.getValue('concurrencyLimit'), 10),
+        MAX_CANDLES_HOLD: parseInt(this.getValue('maxCandlesHold'), 10),
         BOLLINGER_BAND: {
-          PERIOD: parseInt(this.getValue('bbPeriod')),
+          PERIOD: parseInt(this.getValue('bbPeriod'), 10),
           STD_DEV: parseFloat(this.getValue('bbStdDev')),
         },
         RSI: {
-          PERIOD: parseInt(this.getValue('rsiPeriod')),
+          PERIOD: parseInt(this.getValue('rsiPeriod'), 10),
         },
         MACD: {
-          FAST_PERIOD: parseInt(this.getValue('macdFastPeriod')),
-          SLOW_PERIOD: parseInt(this.getValue('macdSlowPeriod')),
-          SIGNAL_PERIOD: parseInt(this.getValue('macdSignalPeriod')),
+          FAST_PERIOD: parseInt(this.getValue('macdFastPeriod'), 10),
+          SLOW_PERIOD: parseInt(this.getValue('macdSlowPeriod'), 10),
+          SIGNAL_PERIOD: parseInt(this.getValue('macdSignalPeriod'), 10),
         },
         EMA_PERIODS: {
-          SHORT: parseInt(this.getValue('emaShortPeriod')),
-          LONG: parseInt(this.getValue('emaLongPeriod')),
+          SHORT: parseInt(this.getValue('emaShortPeriod'), 10),
+          LONG: parseInt(this.getValue('emaLongPeriod'), 10),
         },
         ADX: {
-          PERIOD: parseInt(this.getValue('adxPeriod')),
+          PERIOD: parseInt(this.getValue('adxPeriod'), 10),
         },
         ATR: {
-          PERIOD: parseInt(this.getValue('atrPeriod')),
+          PERIOD: parseInt(this.getValue('atrPeriod'), 10),
         },
         FILTER: {
-          TREND_MA_PERIOD: parseInt(this.getValue('trendMaPeriod')),
-          MIN_TRADE_VOLUME: parseInt(this.getValue('minTradeVolume')),
-          MIN_CONFIDENCE_SCORE: parseInt(this.getValue('minConfidenceScore')),
+          TREND_MA_PERIOD: parseInt(this.getValue('trendMaPeriod'), 10),
+          MIN_TRADE_VOLUME: parseInt(this.getValue('minTradeVolume'), 10),
+          MIN_CONFIDENCE_SCORE: parseInt(this.getValue('minConfidenceScore'), 10),
         },
       },
       BINANCE: {
@@ -224,13 +322,15 @@ class Settings {
       },
       CONFIG: {
         IS_LOG_ENABLED: this.getValue('loggingEnabled') === 'true',
-        SCAN_INTERVAL: parseInt(this.getValue('scanInterval')),
+        SCAN_INTERVAL: parseInt(this.getValue('scanInterval'), 10),
       },
       ORDER_SETTINGS: {
-        LEVERAGE: parseInt(this.getValue('leverage')),
-        QUANTITY: parseInt(this.getValue('quantity')),
-        MAX_ORDERS_PER_DAY: parseInt(this.getValue('maxOrdersPerDay')),
-        ORDER_LIMIT_PER_SCAN: parseInt(this.getValue('orderLimitPerScan')),
+        LEVERAGE: parseInt(this.getValue('leverage'), 10),
+        QUANTITY: parseInt(this.getValue('quantity'), 10),
+        TAKE_PROFIT_PERCENT: parseFloat(this.getValue('takeProfitPercent')),
+        STOP_LOSS_PERCENT: parseFloat(this.getValue('stopLossPercent')),
+        MAX_ORDERS_PER_DAY: parseInt(this.getValue('maxOrdersPerDay'), 10),
+        ORDER_LIMIT_PER_SCAN: parseInt(this.getValue('orderLimitPerScan'), 10),
       },
     };
   }
@@ -265,13 +365,21 @@ class Settings {
       throw new Error('Số tiền phải lớn hơn 0');
     }
 
+    if (config.ORDER_SETTINGS.TAKE_PROFIT_PERCENT < 0.1 || config.ORDER_SETTINGS.TAKE_PROFIT_PERCENT > 100) {
+      throw new Error('Take Profit phải từ 0.1% đến 100%');
+    }
+
+    if (config.ORDER_SETTINGS.STOP_LOSS_PERCENT < 0.1 || config.ORDER_SETTINGS.STOP_LOSS_PERCENT > 100) {
+      throw new Error('Stop Loss phải từ 0.1% đến 100%');
+    }
+
     if (config.CONFIG.SCAN_INTERVAL < 60000) {
       throw new Error('Khoảng thời gian quét phải ít nhất 60 giây');
     }
   }
 
   async resetSettings() {
-    if (confirm('Bạn có chắc chắn muốn đặt lại tất cả cài đặt về giá trị mặc định?')) {
+    if (window.confirm('Bạn có chắc chắn muốn đặt lại tất cả cài đặt về giá trị mặc định?')) {
       try {
         // Reset to default values
         this.populateForms({
@@ -296,6 +404,8 @@ class Settings {
           ORDER_SETTINGS: {
             LEVERAGE: 20,
             QUANTITY: 10,
+            TAKE_PROFIT_PERCENT: 4,
+            STOP_LOSS_PERCENT: 2,
             MAX_ORDERS_PER_DAY: 10,
             ORDER_LIMIT_PER_SCAN: 3,
           },
@@ -353,7 +463,7 @@ class Settings {
 
   cleanup() {
     // Clean up any event listeners or intervals
-    console.log('Settings cleanup completed');
+    console.log('✅ Đã dọn dẹp Settings');
   }
 }
 
