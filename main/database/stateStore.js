@@ -305,9 +305,27 @@ class StateManager {
     this.store.set('statistics', { ...currentStats, ...updates });
   }
 
+  // Helper method to check if API keys are configured
+  hasApiKeysConfigured() {
+    const configManager = require('./configStore');
+    const config = new configManager();
+    const binanceConfig = config.getBinanceConfig();
+
+    const isTestnet = binanceConfig.IS_TESTING;
+    const apiKey = isTestnet ? binanceConfig.TEST_API_KEY : binanceConfig.API_KEY;
+    const apiSecret = isTestnet ? binanceConfig.TEST_API_SECRET : binanceConfig.API_SECRET;
+
+    return !!(apiKey && apiSecret);
+  }
+
   // Real-time data methods
   async updateAccountData() {
     try {
+      // Check if API keys are configured before calling
+      if (!this.hasApiKeysConfigured()) {
+        return { success: false, error: 'API keys not configured' };
+      }
+
       const balanceData = await this.binanceService.getAccountBalance();
       if (balanceData.success) {
         this.updateAccountState({
@@ -339,6 +357,11 @@ class StateManager {
 
   async updatePositionsData() {
     try {
+      // Check if API keys are configured before calling
+      if (!this.hasApiKeysConfigured()) {
+        return [];
+      }
+
       const positions = await this.binanceService.getPositions();
       this.store.set('positions', positions);
       return positions;
@@ -379,7 +402,7 @@ class StateManager {
 
   async executeSignalReal(signalId) {
     const { sendOrderMessage } = require('../bot/sendMessage');
-    
+
     try {
       const signals = this.getSignals();
       const signal = signals.find(s => s.id === signalId);
@@ -397,9 +420,9 @@ class StateManager {
 
       // --- STEP 1: Set margin type to ISOLATED ---
       try {
-        await this.binanceService.client.futuresMarginType({ 
-          symbol: signal.symbol, 
-          marginType: 'ISOLATED' 
+        await this.binanceService.client.futuresMarginType({
+          symbol: signal.symbol,
+          marginType: 'ISOLATED',
         });
       } catch (error) {
         // Ignore if already set to ISOLATED
@@ -455,7 +478,7 @@ class StateManager {
         const errorMsg = `❌ Lỗi đặt lệnh ${signal.symbol}: ${result.error}`;
         const { sendErrorAlert } = require('../bot/sendMessage');
         await sendErrorAlert(errorMsg);
-        
+
         return result;
       }
 
@@ -542,18 +565,18 @@ class StateManager {
         type: 'signal_removed',
       });
 
-      return { 
-        success: true, 
-        message: `✅ Đã vào lệnh ${signal.decision.toUpperCase()} ${signal.symbol} thành công`
+      return {
+        success: true,
+        message: `✅ Đã vào lệnh ${signal.decision.toUpperCase()} ${signal.symbol} thành công`,
       };
     } catch (error) {
       console.error(`Failed to execute signal ${signalId}:`, error);
-      
+
       // Send error notification to Telegram/Discord
       const { sendErrorAlert } = require('../bot/sendMessage');
       const errorMsg = `❌ Lỗi đặt lệnh (từ tín hiệu): ${error.message}`;
       await sendErrorAlert(errorMsg);
-      
+
       return { success: false, error: error.message };
     }
   }
@@ -561,6 +584,16 @@ class StateManager {
   // Connection status methods
   async checkBinanceConnection() {
     try {
+      // First check if API keys are configured
+      if (!this.hasApiKeysConfigured()) {
+        this.updateConnectionStatus('binance', {
+          connected: false,
+          lastCheck: Date.now(),
+          error: 'API keys not configured',
+        });
+        return { success: false, error: 'API keys not configured' };
+      }
+
       const result = await this.binanceService.testConnection();
       this.updateConnectionStatus('binance', {
         connected: result.success,
@@ -585,15 +618,15 @@ class StateManager {
       const configManager = require('./configStore');
       const config = new configManager();
       const discordConfig = config.getConfig().discord || {};
-      
+
       const hasConfig = discordConfig.enabled && discordConfig.token && discordConfig.channelId;
-      
+
       this.updateConnectionStatus('discord', {
         connected: hasConfig,
         lastCheck: Date.now(),
         error: hasConfig ? null : 'Not configured',
       });
-      
+
       return { success: hasConfig, message: hasConfig ? 'Configured' : 'Not configured' };
     } catch (error) {
       this.updateConnectionStatus('discord', {
@@ -612,15 +645,15 @@ class StateManager {
       const configManager = require('./configStore');
       const config = new configManager();
       const telegramConfig = config.getConfig().telegram || {};
-      
+
       const hasConfig = telegramConfig.enabled && telegramConfig.token && telegramConfig.chatId;
-      
+
       this.updateConnectionStatus('telegram', {
         connected: hasConfig,
         lastCheck: Date.now(),
         error: hasConfig ? null : 'Not configured',
       });
-      
+
       return { success: hasConfig, message: hasConfig ? 'Configured' : 'Not configured' };
     } catch (error) {
       this.updateConnectionStatus('telegram', {
@@ -636,13 +669,22 @@ class StateManager {
     const results = await Promise.allSettled([
       this.checkBinanceConnection(),
       this.checkDiscordConnection(),
-      this.checkTelegramConnection()
+      this.checkTelegramConnection(),
     ]);
-    
+
     return {
-      binance: results[0].status === 'fulfilled' ? results[0].value : { success: false, error: 'Check failed' },
-      discord: results[1].status === 'fulfilled' ? results[1].value : { success: false, error: 'Check failed' },
-      telegram: results[2].status === 'fulfilled' ? results[2].value : { success: false, error: 'Check failed' }
+      binance:
+        results[0].status === 'fulfilled'
+          ? results[0].value
+          : { success: false, error: 'Check failed' },
+      discord:
+        results[1].status === 'fulfilled'
+          ? results[1].value
+          : { success: false, error: 'Check failed' },
+      telegram:
+        results[2].status === 'fulfilled'
+          ? results[2].value
+          : { success: false, error: 'Check failed' },
     };
   }
 

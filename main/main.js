@@ -28,7 +28,7 @@ class TradingBotApp {
         contextIsolation: true,
         preload: path.join(__dirname, 'preload.js'),
       },
-      icon: path.join(__dirname, 'build/icons/trading-crypto-bot.ico'),
+      icon: path.join(__dirname, '..', 'build', 'icons', 'trading-crypto-bot.ico'),
       titleBarStyle: 'default',
       show: true, // Show immediately on Linux
       center: true,
@@ -122,8 +122,10 @@ class TradingBotApp {
     // Data handlers
     ipcMain.handle('data:positions', async () => {
       try {
-        // Update positions from Binance
-        await this.stateManager.updatePositionsData();
+        // Only update positions from Binance if bot is running
+        if (this.botManager.isRunning) {
+          await this.stateManager.updatePositionsData();
+        }
         return this.stateManager.getPositions();
       } catch (error) {
         console.error('Lỗi lấy danh sách vị thế:', error);
@@ -141,16 +143,25 @@ class TradingBotApp {
 
     ipcMain.handle('data:stats', async () => {
       try {
-        // Run updates in parallel for better performance
-        await Promise.all([
-          this.stateManager.updateAccountData(),
-          this.stateManager.calculateStatistics(),
-          // Check all connections status (Binance, Discord, Telegram)
-          this.stateManager.checkAllConnections().catch(err => {
-            console.error('⚠️ Kiểm tra kết nối thất bại (sẽ hiển thị là ngắt kết nối):', err.message);
-          })
-        ]);
-        
+        // Only update data from Binance if bot is running
+        if (this.botManager.isRunning) {
+          // Run updates in parallel for better performance
+          await Promise.all([
+            this.stateManager.updateAccountData(),
+            this.stateManager.calculateStatistics(),
+            // Check all connections status (Binance, Discord, Telegram)
+            this.stateManager.checkAllConnections().catch(err => {
+              console.error(
+                '⚠️ Kiểm tra kết nối thất bại (sẽ hiển thị là ngắt kết nối):',
+                err.message
+              );
+            }),
+          ]);
+        } else {
+          // Only calculate statistics from cached data when bot is not running
+          await this.stateManager.calculateStatistics();
+        }
+
         return this.stateManager.getStats();
       } catch (error) {
         console.error('Lỗi lấy thống kê:', error);
@@ -183,6 +194,8 @@ class TradingBotApp {
     // Connection status handlers
     ipcMain.handle('connection:check', async () => {
       try {
+        // Only check Binance connection if we have credentials configured
+        // Don't require bot to be running for connection check
         const results = await this.stateManager.checkAllConnections();
         return results;
       } catch (error) {
@@ -230,11 +243,11 @@ class TradingBotApp {
     ipcMain.handle('notifications:test-telegram', async () => {
       try {
         const { reinitialize, testConnections } = require('./bot/sendMessage');
-        
+
         // Reinitialize với config mới nhất trước khi test
         console.log('🔄 Reinitializing notification services...');
         await reinitialize();
-        
+
         const results = await testConnections();
         return results.telegram;
       } catch (error) {
@@ -246,7 +259,7 @@ class TradingBotApp {
     ipcMain.handle('notifications:test-telegram-with-config', async (event, config) => {
       try {
         const { testConnections } = require('./bot/sendMessage');
-        
+
         // Test với config được truyền vào (không cần reinitialize)
         console.log('🔄 Testing Telegram với config từ UI...');
         const results = await testConnections(config);
@@ -270,7 +283,7 @@ class TradingBotApp {
     ipcMain.handle('telegram:get-chat-id', async (event, token) => {
       try {
         const axios = require('axios');
-        
+
         // Bước 1: Verify bot token
         const meResponse = await axios.get(`https://api.telegram.org/bot${token}/getMe`);
         if (!meResponse.data.ok) {
@@ -279,17 +292,17 @@ class TradingBotApp {
 
         // Bước 2: Lấy updates để tìm chat ID
         const updatesResponse = await axios.get(`https://api.telegram.org/bot${token}/getUpdates`);
-        
+
         if (!updatesResponse.data.ok) {
           return { success: false, error: 'Không thể lấy updates từ Telegram' };
         }
 
         const updates = updatesResponse.data.result;
-        
+
         if (updates.length === 0) {
-          return { 
-            success: false, 
-            error: 'Chưa có tin nhắn nào. Vui lòng gửi "/start" cho bot và thử lại' 
+          return {
+            success: false,
+            error: 'Chưa có tin nhắn nào. Vui lòng gửi "/start" cho bot và thử lại',
           };
         }
 
@@ -298,22 +311,22 @@ class TradingBotApp {
         const chatId = lastUpdate.message?.chat?.id || lastUpdate.my_chat_member?.chat?.id;
 
         if (!chatId) {
-          return { 
-            success: false, 
-            error: 'Không tìm thấy Chat ID. Vui lòng gửi tin nhắn cho bot và thử lại' 
+          return {
+            success: false,
+            error: 'Không tìm thấy Chat ID. Vui lòng gửi tin nhắn cho bot và thử lại',
           };
         }
 
-        return { 
-          success: true, 
+        return {
+          success: true,
           chatId: chatId.toString(),
-          botInfo: meResponse.data.result 
+          botInfo: meResponse.data.result,
         };
       } catch (error) {
         console.error('Lỗi lấy Telegram Chat ID:', error);
-        return { 
-          success: false, 
-          error: error.response?.data?.description || error.message 
+        return {
+          success: false,
+          error: error.response?.data?.description || error.message,
         };
       }
     });

@@ -1,7 +1,8 @@
 {
-  "name": "crypto-trading-bot",
+  "name": "crypto-trading-bot-feature",
   "version": "1.0.0",
   "description": "Crypto Trading Bot Desktop App",
+  "productName": "crypto-trading-bot-feature",
   "main": "main/main.js",
   "homepage": "./",
   "author": {
@@ -18,7 +19,10 @@
     "setup": "chmod +x setup.sh && ./setup.sh",
     "build": "electron-builder",
     "build:win": "electron-builder --win",
+    "build:win:portable": "electron-builder --win portable",
     "build:linux": "electron-builder --linux",
+    "build:linux:appimage": "electron-builder --linux AppImage",
+    "build:portable-appimage": "electron-builder --win portable --linux AppImage",
     "build:all": "electron-builder --win --linux",
     "dist": "electron-builder --publish=never",
     "publish": "electron-builder --publish=always",
@@ -54,72 +58,5 @@
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-prettier": "^5.5.4",
     "prettier": "^3.6.2"
-  },
-  "build": {
-    "appId": "com.tradingbot.app",
-    "productName": "Crypto Trading Bot",
-    "directories": {
-      "output": "dist",
-      "buildResources": "build"
-    },
-    "files": [
-      "main/**/*",
-      "renderer/**/*",
-      "node_modules/**/*",
-      "!node_modules/**/{test,spec}/**",
-      "!**/*.{iml,o,hprof}",
-      "!**/._*",
-      "!**/Thumbs.db"
-    ],
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64",
-            "ia32"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "build/icons/trading-crypto-bot.ico",
-      "publisherName": "Trading Bot",
-      "verifyUpdateCodeSignature": false
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "build/icons/trading-crypto-bot.png",
-      "category": "Office"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "Trading Bot"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "your-username",
-      "repo": "trading-bot-electron"
-    }
   }
 }

@@ -1,9 +1,18 @@
 // Electron Builder Configuration
+const packageJson = require('./package.json');
 
 module.exports = {
-  appId: 'com.tradingbot.app',
-  productName: 'Crypto Trading Bot',
-  copyright: 'Copyright © 2025 Crypto Trading Bot',
+  appId: 'com.tradingbot.feature.app',
+  productName: packageJson.name,
+  copyright: `Copyright © 2025 ${packageJson.name}`,
+
+  name: packageJson.name,
+
+  // Skip code signing for faster build
+  forceCodeSigning: false,
+
+  // Disable winCodeSign to avoid symbolic link issues
+  winCodeSign: false,
 
   // Cấu hình build
   directories: {
@@ -38,6 +47,11 @@ module.exports = {
     icon: 'build/icons/trading-crypto-bot.ico',
     publisherName: 'Trading Bot',
     verifyUpdateCodeSignature: false,
+    sign: null, // Disable code signing completely
+    // Disable symbolic links to avoid permission issues
+    requestedExecutionLevel: 'asInvoker',
+    // Force sử dụng name từ package.json
+    artifactName: '${name}-${version}-${arch}.${ext}',
   },
 
   // Cấu hình cho Linux
@@ -56,7 +70,7 @@ module.exports = {
         arch: ['x64'],
       },
     ],
-    icon: 'build/icons/trading-crypto-bot.png',
+    icon: 'build/icons',
     category: 'Office',
     synopsis: 'Crypto Trading Bot Desktop Application',
   },
@@ -70,26 +84,31 @@ module.exports = {
     installerHeaderIcon: 'build/icons/trading-crypto-bot.ico',
     createDesktopShortcut: true,
     createStartMenuShortcut: true,
-    shortcutName: 'Trading Bot',
-    include: 'build/installer.nsh',
+    shortcutName: packageJson.name,
+    artifactName: '${name}-Setup-${version}-${arch}.${ext}',
+  },
+
+  // Cấu hình Portable cho Windows
+  portable: {
+    artifactName: '${name}-Portable-${version}-${arch}.${ext}',
   },
 
   // Cấu hình AppImage cho Linux
   appImage: {
-    artifactName: '${productName}-${version}-${arch}.${ext}',
+    artifactName: '${name}-${version}-${arch}.${ext}',
     category: 'Office',
   },
 
   // Cấu hình DEB package cho Ubuntu/Debian
   deb: {
-    artifactName: '${productName}-${version}-${arch}.${ext}',
+    artifactName: '${name}-${version}-${arch}.${ext}',
     category: 'Office',
     depends: ['libgtk-3-0', 'libnotify4', 'libnss3', 'libxss1', 'libxtst6', 'xdg-utils'],
   },
 
   // Cấu hình RPM package cho Red Hat/Fedora
   rpm: {
-    artifactName: '${productName}-${version}-${arch}.${ext}',
+    artifactName: '${name}-${version}-${arch}.${ext}',
     category: 'Office',
   },
 
