@@ -8,6 +8,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   stopBot: () => ipcRenderer.invoke('bot:stop'),
   startOrders: () => ipcRenderer.invoke('bot:startOrders'),
   stopOrders: () => ipcRenderer.invoke('bot:stopOrders'),
+  startBotWithAutoOrder: () => ipcRenderer.invoke('bot:start-with-auto-order'),
+  stopBotWithAutoOrder: () => ipcRenderer.invoke('bot:stop-with-auto-order'),
   getBotStatus: () => ipcRenderer.invoke('bot:status'),
 
   // Configuration methods
@@ -46,7 +48,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Event listeners
   onBackendReady: callback => {
-    ipcRenderer.on('backend-ready', (event) => callback());
+    ipcRenderer.on('backend-ready', event => callback());
   },
   onBotStatusUpdate: callback => {
     ipcRenderer.on('bot:status-update', (event, status) => callback(status));

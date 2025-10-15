@@ -191,8 +191,12 @@ class Dashboard {
     // Bot control buttons
     document.getElementById('startBtn')?.addEventListener('click', () => this.startBot());
     document.getElementById('stopBtn')?.addEventListener('click', () => this.stopBot());
-    document.getElementById('startOrderBtn')?.addEventListener('click', () => this.startOrders());
-    document.getElementById('stopOrderBtn')?.addEventListener('click', () => this.stopOrders());
+    document
+      .getElementById('startOrderBtn')
+      ?.addEventListener('click', () => this.startBotWithAutoOrder());
+    document
+      .getElementById('stopOrderBtn')
+      ?.addEventListener('click', () => this.stopBotWithAutoOrder());
 
     // Settings button
     document.getElementById('settingsBtn')?.addEventListener('click', () => this.openSettings());
@@ -335,7 +339,10 @@ class Dashboard {
       this.hideLoading('startOrderBtn');
 
       if (result.success) {
-        this.showNotification('✅ Hệ thống đặt lệnh tự động đã được kích hoạt! Bot sẽ tự động đặt lệnh khi tìm thấy tín hiệu phù hợp.', 'success');
+        this.showNotification(
+          '✅ Hệ thống đặt lệnh tự động đã được kích hoạt! Bot sẽ tự động đặt lệnh khi tìm thấy tín hiệu phù hợp.',
+          'success'
+        );
       } else {
         this.showNotification(`Lỗi: ${result.error}`, 'error');
       }
@@ -359,6 +366,52 @@ class Dashboard {
     } catch (error) {
       this.hideLoading('stopOrderBtn');
       this.showNotification(`Lỗi khi dừng lệnh: ${error.message}`, 'error');
+    }
+  }
+
+  async startBotWithAutoOrder() {
+    try {
+      this.showLoading('startOrderBtn');
+
+      // Use direct invoke method
+      console.log('Using direct invoke for bot:start-with-auto-order');
+      const result = await this.api.invoke('bot:start-with-auto-order');
+      this.hideLoading('startOrderBtn');
+
+      if (result.success) {
+        this.showNotification(
+          '✅ Bot với tự động đặt lệnh đã khởi động! Bot sẽ quét và tự động đặt lệnh khi tìm thấy tín hiệu phù hợp.',
+          'success'
+        );
+      } else {
+        this.showNotification(`Lỗi: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      this.hideLoading('startOrderBtn');
+      this.showNotification(
+        `Lỗi khi khởi động bot với tự động đặt lệnh: ${error.message}`,
+        'error'
+      );
+    }
+  }
+
+  async stopBotWithAutoOrder() {
+    try {
+      this.showLoading('stopOrderBtn');
+
+      // Use direct invoke method
+      console.log('Using direct invoke for bot:stop-with-auto-order');
+      const result = await this.api.invoke('bot:stop-with-auto-order');
+      this.hideLoading('stopOrderBtn');
+
+      if (result.success) {
+        this.showNotification('Bot với tự động đặt lệnh đã dừng thành công', 'success');
+      } else {
+        this.showNotification(`Lỗi: ${result.error}`, 'error');
+      }
+    } catch (error) {
+      this.hideLoading('stopOrderBtn');
+      this.showNotification(`Lỗi khi dừng bot với tự động đặt lệnh: ${error.message}`, 'error');
     }
   }
 

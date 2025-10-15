@@ -101,6 +101,24 @@ class TradingBotApp {
       }
     });
 
+    ipcMain.handle('bot:start-with-auto-order', async () => {
+      try {
+        await this.botManager.startWithAutoOrder();
+        return { success: true, message: 'Bot với tự động đặt lệnh đã khởi động thành công' };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
+    ipcMain.handle('bot:stop-with-auto-order', async () => {
+      try {
+        await this.botManager.stopWithAutoOrder();
+        return { success: true, message: 'Bot với tự động đặt lệnh đã dừng thành công' };
+      } catch (error) {
+        return { success: false, error: error.message };
+      }
+    });
+
     ipcMain.handle('bot:status', () => {
       return this.botManager.getStatus();
     });
@@ -145,10 +163,14 @@ class TradingBotApp {
       try {
         // Only update data from Binance if bot is running
         if (this.botManager.isRunning) {
-          // Run updates in parallel for better performance
-          await Promise.all([
-            this.stateManager.updateAccountData(),
-            this.stateManager.calculateStatistics(),
+          // Run updates in parallel for better performance, but handle errors individually
+          await Promise.allSettled([
+            this.stateManager.updateAccountData().catch(err => {
+              console.error('⚠️ Failed to update account data:', err.message);
+            }),
+            this.stateManager.calculateStatistics().catch(err => {
+              console.error('⚠️ Failed to calculate statistics:', err.message);
+            }),
             // Check all connections status (Binance, Discord, Telegram)
             this.stateManager.checkAllConnections().catch(err => {
               console.error(
@@ -159,7 +181,9 @@ class TradingBotApp {
           ]);
         } else {
           // Only calculate statistics from cached data when bot is not running
-          await this.stateManager.calculateStatistics();
+          await this.stateManager.calculateStatistics().catch(err => {
+            console.error('⚠️ Failed to calculate statistics:', err.message);
+          });
         }
 
         return this.stateManager.getStats();

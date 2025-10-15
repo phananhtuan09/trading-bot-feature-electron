@@ -15,7 +15,7 @@ class Scanner {
     this.scanCount = 0;
   }
 
-  async start() {
+  async start(callback = null) {
     if (this.isRunning) {
       throw new Error('Scanner đang chạy rồi');
     }
@@ -25,10 +25,10 @@ class Scanner {
       this.scanCount = 0;
 
       // Perform initial scan
-      await this.performScan();
+      await this.performScan(callback);
 
       // Start interval scanning
-      this.startIntervalScanning();
+      this.startIntervalScanning(callback);
 
       console.log('✅ Scanner đã khởi động thành công');
       return true;
@@ -60,7 +60,7 @@ class Scanner {
     }
   }
 
-  async performScan() {
+  async performScan(callback = null) {
     if (!this.isRunning) return null;
 
     console.log(`🔍 Bắt đầu quét lúc ${new Date().toLocaleTimeString()}`);
@@ -95,7 +95,7 @@ class Scanner {
       if (allSignals.length > 0) {
         this.stateManager.setSignals(allSignals);
         console.log(`📈 Đã lưu ${allSignals.length} tín hiệu mới.`);
-        
+
         // Send notification for each signal
         for (const signal of allSignals) {
           await sendSignalMessage(signal);
@@ -123,6 +123,15 @@ class Scanner {
       // Send scan summary notification
       await sendScanSummary(summary);
 
+      // Call callback after scan completes and signals are saved
+      if (callback && typeof callback === 'function') {
+        try {
+          await callback();
+        } catch (error) {
+          console.error('❌ Error in scan callback:', error);
+        }
+      }
+
       if (errors.length > 0) {
         console.error(`Chi tiết lỗi:`, errors);
         this.stateManager.incrementErrors();
@@ -146,11 +155,11 @@ class Scanner {
     }
   }
 
-  startIntervalScanning() {
+  startIntervalScanning(callback = null) {
     const appConfig = this.configManager.getConfig().CONFIG;
     const scanInterval = appConfig.SCAN_INTERVAL || 3600000; // Mặc định 1 giờ
     this.scanInterval = setInterval(() => {
-      this.performScan();
+      this.performScan(callback);
     }, scanInterval);
   }
 

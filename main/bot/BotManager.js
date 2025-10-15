@@ -25,7 +25,7 @@ class BotManager {
       for (const position of data.updateData.updatedPositions) {
         const positionAmt = parseFloat(position.pa);
         const markPrice = parseFloat(position.mp);
-        
+
         // Map abbreviated WebSocket property names to full names
         const positionUpdate = {
           symbol: position.s,
@@ -77,10 +77,17 @@ class BotManager {
       // Get current balance and set as initial capital if not already set
       const accountState = this.stateManager.getAccountState();
       if (!accountState.initialCapital || accountState.initialCapital === 0) {
-        const balanceData = await this.binanceService.getAccountBalance();
-        if (balanceData.success) {
-          this.stateManager.setInitialCapital(balanceData.balance);
-          console.log(`💰 Initial Capital set to: ${balanceData.balance} USDT`);
+        // Only try to get balance if API keys are configured
+        if (this.stateManager.hasApiKeysConfigured()) {
+          try {
+            const balanceData = await this.binanceService.getAccountBalance();
+            if (balanceData.success) {
+              this.stateManager.setInitialCapital(balanceData.balance);
+              console.log(`💰 Initial Capital set to: ${balanceData.balance} USDT`);
+            }
+          } catch (error) {
+            console.log('⚠️ Could not get initial balance (API keys not configured or invalid)');
+          }
         }
       }
 
@@ -96,10 +103,20 @@ class BotManager {
       // Start scanning process
       await this.scanner.start();
 
-      // Subscribe to real-time account updates
-      this.userWs = this.binanceService.subscribeToAccountUpdates(
-        this.handleAccountUpdate.bind(this)
-      );
+      // Subscribe to real-time account updates (only if API keys are configured)
+      if (this.stateManager.hasApiKeysConfigured()) {
+        const wsCleanup = this.binanceService.subscribeToAccountUpdates(
+          this.handleAccountUpdate.bind(this)
+        );
+        if (wsCleanup && typeof wsCleanup === 'function') {
+          this.userWs = wsCleanup;
+        } else {
+          console.log('⚠️ WebSocket subscription failed or returned invalid cleanup function');
+          this.userWs = null;
+        }
+      } else {
+        console.log('⚠️ Skipping Binance WebSocket subscription (API keys not configured)');
+      }
 
       // Emit status update
       this.emitStatusUpdate();
@@ -134,7 +151,7 @@ class BotManager {
       }
 
       // Clean up WebSocket connection
-      if (this.userWs) {
+      if (this.userWs && typeof this.userWs === 'function') {
         this.userWs(); // The cleanup function returned by the ws subscription
         this.userWs = null;
       }
@@ -197,6 +214,129 @@ class BotManager {
       return true;
     } catch (error) {
       console.error('❌ Lỗi dừng đặt lệnh:', error);
+      throw error;
+    }
+  }
+
+  async startWithAutoOrder() {
+    if (this.isRunning) {
+      throw new Error('Bot đang chạy rồi');
+    }
+
+    try {
+      this.isRunning = true;
+      this.isOrderActive = true;
+
+      // Initialize notification services
+      await initNotifications();
+
+      // Get current balance and set as initial capital if not already set
+      const accountState = this.stateManager.getAccountState();
+      if (!accountState.initialCapital || accountState.initialCapital === 0) {
+        // Only try to get balance if API keys are configured
+        if (this.stateManager.hasApiKeysConfigured()) {
+          try {
+            const balanceData = await this.binanceService.getAccountBalance();
+            if (balanceData.success) {
+              this.stateManager.setInitialCapital(balanceData.balance);
+              console.log(`💰 Initial Capital set to: ${balanceData.balance} USDT`);
+            }
+          } catch (error) {
+            console.log('⚠️ Could not get initial balance (API keys not configured or invalid)');
+          }
+        }
+      }
+
+      // Initialize bot components
+      this.scanner = new Scanner();
+      this.order = new Order();
+
+      // Set mainWindow for order to send notifications
+      if (this.mainWindow) {
+        this.order.setMainWindow(this.mainWindow);
+      }
+
+      // Start order execution
+      this.order.start();
+
+      // Start scanning process with auto order callback
+      const autoOrderCallback = async () => {
+        console.log('🔄 Auto order callback triggered');
+        if (this.isOrderActive && this.order) {
+          try {
+            console.log('📋 Executing auto order...');
+            await this.order.execute();
+          } catch (error) {
+            console.error('❌ Error in auto order execution:', error);
+          }
+        } else {
+          console.log('⚠️ Auto order not active or order not initialized');
+        }
+      };
+
+      await this.scanner.start(autoOrderCallback);
+
+      // Subscribe to real-time account updates (only if API keys are configured)
+      if (this.stateManager.hasApiKeysConfigured()) {
+        const wsCleanup = this.binanceService.subscribeToAccountUpdates(
+          this.handleAccountUpdate.bind(this)
+        );
+        if (wsCleanup && typeof wsCleanup === 'function') {
+          this.userWs = wsCleanup;
+        } else {
+          console.log('⚠️ WebSocket subscription failed or returned invalid cleanup function');
+          this.userWs = null;
+        }
+      } else {
+        console.log('⚠️ Skipping Binance WebSocket subscription (API keys not configured)');
+      }
+
+      // Emit status update
+      this.emitStatusUpdate();
+
+      console.log('✅ Bot với tự động đặt lệnh đã khởi động thành công');
+      return true;
+    } catch (error) {
+      this.isRunning = false;
+      this.isOrderActive = false;
+      console.error('❌ Lỗi khởi động bot với tự động đặt lệnh:', error);
+      throw error;
+    }
+  }
+
+  async stopWithAutoOrder() {
+    if (!this.isRunning) {
+      return;
+    }
+
+    try {
+      this.isRunning = false;
+      this.isOrderActive = false;
+
+      // Stop components
+      if (this.scanner) {
+        await this.scanner.stop();
+        this.scanner = null;
+      }
+
+      if (this.order) {
+        await this.order.stop();
+        this.order = null;
+      }
+
+      // Clean up WebSocket connection
+      if (this.userWs && typeof this.userWs === 'function') {
+        this.userWs(); // The cleanup function returned by the ws subscription
+        this.userWs = null;
+      }
+
+      // Emit status update
+      this.emitStatusUpdate();
+
+      console.log('✅ Bot với tự động đặt lệnh đã dừng thành công');
+      return true;
+    } catch (error) {
+      console.error('❌ Lỗi dừng bot với tự động đặt lệnh:', error);
       throw error;
     }
   }

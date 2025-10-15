@@ -1,18 +1,29 @@
 const Binance = require('binance-api-node').default;
 const ConfigManager = require('../database/configStore');
 
+// Utility function to add delay between API requests
+const delay = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 class BinanceService {
-  constructor() {
-    const configManager = new ConfigManager();
-    const binanceConfig = configManager.getBinanceConfig();
+  constructor(binanceConfig = null) {
+    // Allow passing config from outside, or get from store
+    if (!binanceConfig) {
+      const configManager = new ConfigManager();
+      binanceConfig = configManager.getBinanceConfig();
+    }
 
     this.isTestnet = binanceConfig.IS_TESTING;
 
     const apiKey = this.isTestnet ? binanceConfig.TEST_API_KEY : binanceConfig.API_KEY;
     const apiSecret = this.isTestnet ? binanceConfig.TEST_API_SECRET : binanceConfig.API_SECRET;
 
-    const options = { apiKey, apiSecret };
+    const options = {
+      apiKey,
+      apiSecret,
+      timeout: 60000, // 60 seconds timeout
+      recvWindow: 60000, // 60 seconds recv window
+      keepAlive: true,
+    };
     if (this.isTestnet) {
       options.httpFutures = 'https://testnet.binancefuture.com';
     }
@@ -21,6 +32,8 @@ class BinanceService {
       console.error('Binance API key and secret are required.');
       // We don't throw an error here, but calls will fail.
       // The UI should prevent starting the bot without keys.
+      this.client = null;
+      return; // Exit early, don't initialize client
     }
 
     this.client = Binance(options);
@@ -28,19 +41,30 @@ class BinanceService {
 
   // Subscribe to user account updates via WebSocket
   subscribeToAccountUpdates(callback) {
+    if (!this.client) {
+      console.error('Binance client not initialized. Please configure API keys.');
+      return null;
+    }
+
     try {
-      console.log('Subscribing to Binance user data stream...');
       const clean = this.client.ws.user(callback);
-      console.log('Successfully subscribed to user data stream.');
-      // We can return the `clean` function to allow unsubscribing later if needed
       return clean;
     } catch (error) {
       console.error('Failed to subscribe to user data stream:', error);
+      return null;
     }
   }
 
   // Test connection
   async testConnection() {
+    if (!this.client) {
+      return {
+        success: false,
+        message: 'Binance client not initialized. Please configure API keys.',
+        error: 'No API keys configured',
+      };
+    }
+
     try {
       const accountInfo = await this.client.futuresAccountInfo();
       return {
@@ -53,16 +77,35 @@ class BinanceService {
       };
     } catch (error) {
       console.error('Binance connection test failed:', error);
+
+      let errorMessage = 'Lỗi kết nối Binance không xác định';
+
+      if (error.code === -2015) {
+        errorMessage =
+          'API key không hợp lệ hoặc không có quyền truy cập. Vui lòng kiểm tra lại API key và secret.';
+      } else if (error.code === -1021) {
+        errorMessage = 'Timestamp không đồng bộ. Vui lòng kiểm tra thời gian hệ thống.';
+      } else if (error.code === -2014) {
+        errorMessage = 'API key không có quyền thực hiện hành động này.';
+      } else if (error.message.includes('Invalid API-key')) {
+        errorMessage = 'API key không hợp lệ. Vui lòng kiểm tra lại cấu hình.';
+      }
+
       return {
         success: false,
-        message: `Lỗi kết nối Binance: ${error.message}`,
+        message: errorMessage,
         error: error.message,
+        code: error.code,
       };
     }
   }
 
   // Get account balance
   async getAccountBalance() {
+    if (!this.client) {
+      throw new Error('Binance client not initialized. Please configure API keys.');
+    }
+
     try {
       const accountInfo = await this.client.futuresAccountInfo();
       const usdtBalance = accountInfo.assets.find(asset => asset.asset === 'USDT');
@@ -77,22 +120,34 @@ class BinanceService {
       };
     } catch (error) {
       console.error('Failed to get account balance:', error);
+
+      let errorMessage = 'Lỗi lấy số dư tài khoản';
+      if (error.code === -2015) {
+        errorMessage = 'API key không hợp lệ hoặc không có quyền truy cập';
+      }
+
       return {
         success: false,
-        error: error.message,
+        error: errorMessage,
+        code: error.code,
       };
     }
   }
 
   // Get all positions
   async getPositions() {
+    if (!this.client) {
+      console.warn('⚠️ Binance client not initialized. Please configure API keys.');
+      return [];
+    }
+
     try {
       const positions = await this.client.futuresPositionRisk();
       const activePositions = positions.filter(pos => parseFloat(pos.positionAmt) !== 0);
 
       return activePositions.map(position => {
         const posAmt = parseFloat(position.positionAmt);
-        
+
         const mappedPosition = {
           symbol: position.symbol,
           side: posAmt > 0 ? 'LONG' : 'SHORT',
@@ -111,11 +166,11 @@ class BinanceService {
           isolatedWallet: parseFloat(position.isolatedWallet),
           updateTime: position.updateTime,
         };
-                
+
         return mappedPosition;
       });
     } catch (error) {
-      console.error('❌ Lỗi lấy danh sách vị thế:', error);
+      console.error('❌ Lỗi lấy danh sách vị thế:', error.message);
       return [];
     }
   }
@@ -133,6 +188,10 @@ class BinanceService {
 
   // Close position
   async closePosition(symbol, side) {
+    if (!this.client) {
+      throw new Error('Binance client not initialized. Please configure API keys.');
+    }
+
     try {
       const position = await this.getPosition(symbol);
       if (!position) {
@@ -150,8 +209,6 @@ class BinanceService {
         positionSide: 'BOTH',
         reduceOnly: true,
       });
-
-      console.log(`Đã đóng vị thế ${symbol}: ${orderSide} ${quantity}`);
       return {
         success: true,
         orderId: order.orderId,
@@ -171,6 +228,10 @@ class BinanceService {
 
   // Place order
   async placeOrder(orderData) {
+    if (!this.client) {
+      throw new Error('Binance client not initialized. Please configure API keys.');
+    }
+
     try {
       const {
         symbol,
@@ -206,7 +267,6 @@ class BinanceService {
 
       const order = await this.client.futuresOrder(orderParams);
 
-      console.log(`Đã đặt lệnh ${symbol}: ${side} ${quantity} ${type}`);
       return {
         success: true,
         orderId: order.orderId,
@@ -343,6 +403,83 @@ class BinanceService {
     }
   }
 
+  // Set margin type with delay and better error handling
+  async setMarginType(symbol, marginType = 'ISOLATED') {
+    if (!this.client) {
+      throw new Error('Binance client not initialized. Please configure API keys.');
+    }
+
+    try {
+      // Add delay before API request to prevent rate limiting
+      await delay(500);
+
+      const result = await this.client.futuresMarginType({
+        symbol,
+        marginType,
+      });
+
+      return { success: true, result };
+    } catch (error) {
+      // Check for timestamp synchronization error
+      if (error.code === -1021) {
+        console.error(`❌ Timestamp synchronization error for ${symbol}:`, error.message);
+        console.error('   Please check your system clock and time zone settings.');
+        return { success: false, error: 'Timestamp synchronization error', isTimestampError: true };
+      }
+
+      // Ignore if already set to the desired margin type
+      if (
+        error.message?.includes('No need to change margin type') ||
+        error.message?.includes('No need')
+      ) {
+        return { success: true, message: `Margin type already set to ${marginType}` };
+      }
+
+      // Handle timeout or server errors gracefully
+      if (error.message?.includes('Timeout') || error.message?.includes('backend server')) {
+        console.warn(`⚠️ Timeout setting margin type for ${symbol}`);
+        return { success: false, error: error.message, isTimeout: true };
+      }
+
+      console.error(`❌ Failed to set margin type for ${symbol}:`, error.message);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // Set leverage with delay and better error handling
+  async setLeverage(symbol, leverage = 20) {
+    if (!this.client) {
+      throw new Error('Binance client not initialized. Please configure API keys.');
+    }
+
+    try {
+      // Add delay before API request to prevent rate limiting
+      await delay(1000); // 1 second delay
+
+      const result = await this.client.futuresLeverage({
+        symbol,
+        leverage,
+      });
+
+      return { success: true, result };
+    } catch (error) {
+      // Check for timestamp synchronization error
+      if (error.code === -1021) {
+        console.error(`❌ Timestamp synchronization error for ${symbol}:`, error.message);
+        console.error('   Please check your system clock and time zone settings.');
+        return { success: false, error: 'Timestamp synchronization error', isTimestampError: true };
+      }
+
+      // Handle timeout or server errors gracefully
+      if (error.message?.includes('Timeout') || error.message?.includes('backend server')) {
+        console.warn(`⚠️ Timeout setting leverage for ${symbol}`);
+        return { success: false, error: error.message, isTimeout: true };
+      }
+
+      console.error(`❌ Failed to set leverage for ${symbol}:`, error.message);
+      return { success: false, error: error.message };
+    }
+  }
 }
 
 module.exports = BinanceService;

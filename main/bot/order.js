@@ -76,10 +76,10 @@ class Order {
 
       const successMsg = `✅ Đã vào lệnh ${decision.toUpperCase()} ${symbol} | Giá: ${price.toFixed(4)} | KL: ${quantity}`;
       console.log(`📈 ${successMsg} | SL: ${slPrice.toFixed(4)} | TP: ${tpPrice.toFixed(4)}`);
-      
+
       // Send success notification to UI
       this.sendNotification(successMsg, 'success');
-      
+
       // Send order notification to Discord/Telegram
       await sendOrderMessage({
         symbol,
@@ -90,32 +90,48 @@ class Order {
         slPrice,
         leverage: this.configManager.getConfig().ORDER_SETTINGS?.LEVERAGE || 20,
       });
-      
+
       return true;
     } catch (error) {
       const errorMsg = `❌ Lỗi đặt lệnh ${symbol}: ${error.message}`;
       console.error(`🔴 ${errorMsg}`);
-      
+
       // Send error notification to UI
       this.sendNotification(errorMsg, 'error');
-      
+
       // Send error notification to Telegram/Discord
       await sendErrorAlert(errorMsg);
-      
+
       return false;
     }
   }
 
   // Thiết lập loại margin (ISOLATED) cho cặp giao dịch
   async setMarginType(symbol) {
-    try {
-      const client = this.binanceService.client;
-      await client.futuresMarginType({ symbol, marginType: 'ISOLATED' });
-    } catch (error) {
-      if (!error.message.includes('No need')) {
-        console.error(`🔴 Lỗi set margin type cho ${symbol}: ${error}`);
-        throw error;
-      }
+    const result = await this.binanceService.setMarginType(symbol, 'ISOLATED');
+
+    // If margin type is already set correctly, that's fine - don't throw error
+    if (result.success || result.message?.includes('already')) {
+      return; // Success or already set
+    }
+
+    if (!result.success && !result.isTimeout && !result.isTimestampError) {
+      // Only throw if it's a critical error (not timeout or timestamp error)
+      const errorMsg = `Lỗi set margin type cho ${symbol}: ${result.error}`;
+      console.error(`🔴 ${errorMsg}`);
+      throw new Error(errorMsg);
+    }
+
+    // If it's a timeout, log warning but continue
+    if (result.isTimeout) {
+      console.warn(`⚠️ Timeout setting margin type for ${symbol}, but continuing...`);
+    }
+
+    // If it's a timestamp error, log warning but continue
+    if (result.isTimestampError) {
+      console.warn(
+        `⚠️ Timestamp error setting margin type for ${symbol} - please check system clock`
+      );
     }
   }
 
@@ -128,12 +144,20 @@ class Order {
     }
 
     const orderSettings = this.stateManager.getOrdersState();
-    const client = this.binanceService.client;
+    const leverage = orderSettings.leverage || 20;
 
-    await client.futuresLeverage({
-      symbol,
-      leverage: orderSettings.leverage || 20,
-    });
+    const leverageResult = await this.binanceService.setLeverage(symbol, leverage);
+    if (!leverageResult.success && !leverageResult.isTimeout && !leverageResult.isTimestampError) {
+      throw new Error(`Failed to set leverage for ${symbol}: ${leverageResult.error}`);
+    }
+
+    if (leverageResult.isTimeout) {
+      console.warn(`⚠️ Timeout setting leverage for ${symbol}, but continuing...`);
+    }
+
+    if (leverageResult.isTimestampError) {
+      console.warn(`⚠️ Timestamp error setting leverage for ${symbol} - please check system clock`);
+    }
 
     return {
       quantity,
@@ -142,11 +166,26 @@ class Order {
   }
 
   async calculateQuantity(symbol, price) {
-    const client = this.binanceService.client;
-    const exchangeInfo = await client.futuresExchangeInfo();
-    const symbolInfo = exchangeInfo.symbols.find(s => s.symbol === symbol);
-    const lotSizeFilter = symbolInfo.filters.find(f => f.filterType === 'LOT_SIZE');
-    const stepSize = parseFloat(lotSizeFilter.stepSize);
+    let stepSize;
+    try {
+      const client = this.binanceService.client;
+      const exchangeInfo = await client.futuresExchangeInfo();
+      const symbolInfo = exchangeInfo.symbols.find(s => s.symbol === symbol);
+
+      if (!symbolInfo) {
+        throw new Error(`Không tìm thấy thông tin cho symbol: ${symbol}`);
+      }
+
+      const lotSizeFilter = symbolInfo.filters.find(f => f.filterType === 'LOT_SIZE');
+      if (!lotSizeFilter || !lotSizeFilter.stepSize) {
+        throw new Error(`Không tìm thấy stepSize cho symbol: ${symbol}`);
+      }
+
+      stepSize = parseFloat(lotSizeFilter.stepSize);
+    } catch (error) {
+      console.error(`⚠️ Failed to get exchange info for ${symbol}:`, error.message);
+      throw new Error(`Không thể lấy thông tin sàn giao dịch: ${error.message}`);
+    }
 
     const orderSettings = this.stateManager.getOrdersState();
     const quantityPerOrder = orderSettings.quantity || 10;
@@ -171,8 +210,16 @@ class Order {
       });
 
       // Get tickSize from exchange info
-      const client = this.binanceService.client;
-      const symbolInfo = (await client.futuresExchangeInfo()).symbols.find(s => s.symbol === symbol);
+      let symbolInfo;
+      try {
+        const client = this.binanceService.client;
+        const exchangeInfo = await client.futuresExchangeInfo();
+        symbolInfo = exchangeInfo.symbols.find(s => s.symbol === symbol);
+      } catch (error) {
+        console.error(`⚠️ Failed to get exchange info for ${symbol}:`, error.message);
+        throw new Error(`Không thể lấy thông tin sàn giao dịch: ${error.message}`);
+      }
+
       const priceFilter = symbolInfo.filters.find(f => f.filterType === 'PRICE_FILTER');
       const tickSize = parseFloat(priceFilter.tickSize);
 
@@ -277,7 +324,7 @@ class Order {
       let successCount = 0;
       let errorCount = 0;
       const successfulSignals = []; // Track successfully executed signals
-      
+
       for (const signal of filteredSignals) {
         console.log(`Đang thực hiện đặt lệnh cho: ${signal.symbol}`);
         const result = await this.placeOrder(signal);
@@ -288,14 +335,14 @@ class Order {
           errorCount++;
         }
       }
-      
+
       // Remove successfully executed signals from store
       if (successfulSignals.length > 0) {
         const currentSignals = this.stateManager.getSignals();
         const successfulSignalIds = successfulSignals.map(s => s.id);
         const updatedSignals = currentSignals.filter(s => !successfulSignalIds.includes(s.id));
         this.stateManager.setSignals(updatedSignals);
-        
+
         // Log removed signals
         for (const signal of successfulSignals) {
           this.stateManager.addLog({
@@ -306,7 +353,7 @@ class Order {
         }
         console.log(`🗑️ Đã xóa ${successfulSignals.length} tín hiệu sau khi đặt lệnh thành công`);
       }
-      
+
       // Send summary notification
       if (successCount > 0 || errorCount > 0) {
         const summary = [];
@@ -316,9 +363,12 @@ class Order {
         if (errorCount > 0) {
           summary.push(`❌ ${errorCount} lệnh lỗi`);
         }
-        this.sendNotification(`📊 Kết quả đặt lệnh: ${summary.join(', ')}`, successCount > 0 ? 'success' : 'error');
+        this.sendNotification(
+          `📊 Kết quả đặt lệnh: ${summary.join(', ')}`,
+          successCount > 0 ? 'success' : 'error'
+        );
       }
-      
+
       // Notify if signals were skipped due to scanOrderLimit
       if (validSignals.length > scanOrderLimit) {
         const skipped = validSignals.slice(scanOrderLimit).map(s => s.symbol);
