@@ -4,6 +4,7 @@ const { analyzeMarket } = require('./dataService');
 const StateManager = require('../database/stateStore');
 const ConfigManager = require('../database/configStore');
 const { sendSignalMessage, sendScanSummary } = require('./sendMessage');
+const fileLogger = require('./fileLogger');
 
 class Scanner {
   constructor() {
@@ -61,7 +62,9 @@ class Scanner {
   }
 
   async performScan(callback = null) {
-    if (!this.isRunning) return null;
+    if (!this.isRunning) {
+      return null;
+    }
 
     console.log(`🔍 Bắt đầu quét lúc ${new Date().toLocaleTimeString()}`);
     this.lastScanTime = Date.now();
@@ -123,6 +126,16 @@ class Scanner {
       // Send scan summary notification
       await sendScanSummary(summary);
 
+      // Log scan summary to file
+      await fileLogger.logScanSummary({
+        totalSymbols: symbols.length,
+        signalsDetected: allSignals.length,
+        signalsFiltered: symbols.length - allSignals.length - errors.length,
+        errors: errors.length,
+        scanTime: new Date().toISOString(),
+        signals: allSignals
+      });
+
       // Call callback after scan completes and signals are saved
       if (callback && typeof callback === 'function') {
         try {
@@ -176,7 +189,7 @@ class Scanner {
       isRunning: this.isRunning,
       lastScanTime: this.lastScanTime,
       scanCount: this.scanCount,
-      nextScanIn: this.scanInterval ? scanInterval - (Date.now() - this.lastScanTime) : null,
+      nextScanIn: this.scanInterval ? (this.configManager.getConfig().CONFIG.SCAN_INTERVAL || 3600000) - (Date.now() - this.lastScanTime) : null,
     };
   }
 }

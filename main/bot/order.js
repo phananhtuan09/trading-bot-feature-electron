@@ -2,6 +2,7 @@ const StateManager = require('../database/stateStore');
 const ConfigManager = require('../database/configStore');
 const BinanceService = require('./binanceService');
 const { sendOrderMessage } = require('./sendMessage');
+const fileLogger = require('./fileLogger');
 
 class Order {
   constructor() {
@@ -91,6 +92,18 @@ class Order {
         leverage: this.configManager.getConfig().ORDER_SETTINGS?.LEVERAGE || 20,
       });
 
+      // Log successful order placement
+      await fileLogger.logOrderPlaced({
+        symbol,
+        side,
+        entryPrice: price,
+        quantity,
+        tpPrice,
+        slPrice,
+        leverage: this.configManager.getConfig().ORDER_SETTINGS?.LEVERAGE || 20,
+        orderId: orderResult.orderId || null
+      });
+
       return true;
     } catch (error) {
       const errorMsg = `❌ Lỗi đặt lệnh ${symbol}: ${error.message}`;
@@ -101,6 +114,15 @@ class Order {
 
       // Send error notification to Telegram/Discord
       await sendErrorAlert(errorMsg);
+
+      // Log failed order placement
+      await fileLogger.logOrderFailed({
+        symbol,
+        side: decision === 'Long' ? 'BUY' : 'SELL',
+        error: error.message,
+        attemptedPrice: price,
+        attemptedQuantity: null // Will be calculated in prepareOrder but failed before that
+      });
 
       return false;
     }

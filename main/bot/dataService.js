@@ -2,6 +2,7 @@ const { binanceTestClient: binanceClient } = require('./clients');
 const TradingStrategies = require('./tradingStrategies');
 const { RSI, BollingerBands, MACD, ADX, EMA } = require('technicalindicators');
 const { STRATEGY_CONFIG } = require('./config');
+const fileLogger = require('./fileLogger');
 
 
 // Lấy dữ liệu lịch sử giá (nến) từ Binance Futures.
@@ -10,7 +11,7 @@ async function getHistoricalData(symbol, interval = STRATEGY_CONFIG.INTERVAL, li
   let allCandles = []; // Sẽ lưu trữ nến từ cũ nhất đến mới nhất
 
   try {
-    let requestsNeeded = Math.ceil(limit / BATCH_SIZE);
+    const requestsNeeded = Math.ceil(limit / BATCH_SIZE);
     let currentBatchEndTime;
 
     for (let i = 0; i < requestsNeeded; i++) {
@@ -81,7 +82,7 @@ async function getHistoricalData(symbol, interval = STRATEGY_CONFIG.INTERVAL, li
       volumes: finalCandles.map(c => parseFloat(c.volume)),
     };
   } catch (error) {
-    // logger.error(`[${symbol}-${interval}] Lỗi lấy dữ liệu lịch sử: ${error.message} (Code: ${error.code})`)
+    console.error(`[${symbol}-${interval}] Lỗi lấy dữ liệu lịch sử: ${error.message} (Code: ${error.code})`);
     return null;
   }
 }
@@ -132,12 +133,12 @@ function processSignals(signals) {
     decision = 'Short';
   }
 
-  if (decision === 'Wait') {
-    logger.info(
-      `No clear decision for ${signals.symbol}. BUY: ${signalGroups.BUY.count}, SELL: ${signalGroups.SELL.count}`
-    );
-    return null;
-  }
+    if (decision === 'Wait') {
+      console.log(
+        `No clear decision for ${signals.symbol}. BUY: ${signalGroups.BUY.count}, SELL: ${signalGroups.SELL.count}`
+      );
+      return null;
+    }
 
   return { decision, futuresDetails, strengthCount };
 }
@@ -218,9 +219,9 @@ function filterSignals(strategies, data, indicators, multiTimeframe) {
 }
 
 // Format tín hiệu thay null -> ""
-function formatSignals(signals) {
-  return Object.fromEntries(Object.entries(signals).map(([k, v]) => [k, v || '']));
-}
+// function formatSignals(signals) {
+//   return Object.fromEntries(Object.entries(signals).map(([k, v]) => [k, v || '']));
+// }
 
 // Hàm tính TP và SL mới dựa trên ATR
 function calculateTPAndSL(decision, currentPrice, indicators) {
@@ -240,7 +241,7 @@ function calculateTPAndSL(decision, currentPrice, indicators) {
   // if (TP_ROI < 5) TP_ROI = 5;
 
   // Điều chỉnh theo độ biến động
-  const volatilityAdjustment = 1 + volatility / 100;
+  // const volatilityAdjustment = 1 + volatility / 100;
   return {
     TP: baseTP,
     SL: baseSL,
@@ -279,7 +280,9 @@ function calculateATR(highs, lows, closes, period = STRATEGY_CONFIG.ATR.PERIOD) 
 async function analyzeMarket(symbol) {
   try {
     const data = await getHistoricalData(symbol);
-    if (!data || data.closes.length < 200) return null;
+    if (!data || data.closes.length < 200) {
+      return null;
+    }
 
     const atrValues = calculateATR(data.highs, data.lows, data.closes);
     const currentATR = atrValues || 0;
@@ -336,17 +339,40 @@ async function analyzeMarket(symbol) {
     });
 
     if (!result) {
+      // Log filtered signal - market type MIXED
+      fileLogger.logSignalFiltered(symbol, currentPrice, 'market_type_mixed', {
+        marketType: 'MIXED',
+        reason: 'Market type could not be determined clearly'
+      });
       return null;
     }
 
     // Lọc thêm: Volume
     const dailyVolume = data.volumes.slice(-24).reduce((a, b) => a + b, 0);
     if (dailyVolume < STRATEGY_CONFIG.FILTER.MIN_TRADE_VOLUME) {
+      // Log filtered signal - low volume
+      fileLogger.logSignalFiltered(symbol, currentPrice, 'low_volume', {
+        dailyVolume: dailyVolume,
+        minRequiredVolume: STRATEGY_CONFIG.FILTER.MIN_TRADE_VOLUME,
+        decision: result.signal === 'BUY' ? 'Long' : 'Short',
+        strength: result.strength,
+        reason: result.reason,
+        marketType: result.marketType
+      });
       return null;
     }
 
     // Lọc thêm: Strength tối thiểu
     if (result.strength < STRATEGY_CONFIG.FILTER.MIN_CONFIDENCE_SCORE) {
+      // Log filtered signal - low strength
+      fileLogger.logSignalFiltered(symbol, currentPrice, 'low_strength', {
+        strength: result.strength,
+        minRequiredStrength: STRATEGY_CONFIG.FILTER.MIN_CONFIDENCE_SCORE,
+        decision: result.signal === 'BUY' ? 'Long' : 'Short',
+        reason: result.reason,
+        marketType: result.marketType,
+        dailyVolume: dailyVolume
+      });
       return null;
     }
 
@@ -358,11 +384,21 @@ async function analyzeMarket(symbol) {
     );
 
     if (Number(TP_ROI) < 5) {
-      //  logger.info(`Discarded signal for ${symbol} due to TP_ROI < 5%: ${TP_ROI}`)
+      // Log filtered signal - low TP_ROI
+      fileLogger.logSignalFiltered(symbol, currentPrice, 'low_tp_roi', {
+        TP_ROI: Number(TP_ROI),
+        minRequiredTP: 5,
+        decision: result.signal === 'BUY' ? 'Long' : 'Short',
+        strength: result.strength,
+        reason: result.reason,
+        marketType: result.marketType,
+        dailyVolume: dailyVolume,
+        SL_ROI: Number(SL_ROI)
+      });
       return null; // Loại bỏ tín hiệu có TP < 5%
     }
 
-    return {
+    const signalData = {
       symbol,
       decision: result.signal === 'BUY' ? 'Long' : 'Short',
       price: currentPrice,
@@ -373,6 +409,11 @@ async function analyzeMarket(symbol) {
       reason: result.reason,
       marketType: result.marketType,
     };
+
+    // Log signal detected (passed all filters)
+    fileLogger.logSignalDetected(signalData);
+
+    return signalData;
   } catch (error) {
     console.error(`Lỗi khi lấy dữ liệu nến cho ${symbol}:`, error);
     return null;
